@@ -1,0 +1,70 @@
+<script setup lang="ts">
+import { ref, watch, nextTick, onMounted } from 'vue';
+import { useLogStore } from '../stores/logStore.ts';
+import i18n from '@/i18n';
+
+const logStore = useLogStore();
+const scrollBox = ref<HTMLElement | null>(null);
+
+// 로그 추가 시 자동 스크롤
+watch(() => logStore.logs.length, async () => {
+  await nextTick();
+  if (scrollBox.value) scrollBox.value.scrollTop = scrollBox.value.scrollHeight;
+});
+
+onMounted(() => {
+  // 컴포넌트가 뜨자마자 로그를 하나 생성해서 창을 채워봅니다.
+  logStore.addLog('system', i18n.global.t('msg.letsStartCoding'));
+});
+</script>
+
+<template>
+  <div class="terminal-wrapper">
+    <div class="terminal-header">TERMINAL LOG</div>
+    <div class="log-container" ref="scrollBox">
+      <div v-for="(log, i) in logStore.logs" :key="i" :class="['log-row', log.type]">
+        <span class="time">[{{ log.time }}]</span>
+        <span class="text">{{ log.text }}</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.terminal-wrapper {
+  width: 100%;
+  height: 100%; /* 부모 .terminal-area의 높이를 따름 */
+  display: flex;
+  flex-direction: column;
+  background: #000; /* 완전 검정으로 구분 */
+}
+
+.terminal-header {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: #333;
+  color: #aaa;
+  font-weight: bold;
+}
+
+.log-container {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+  font-family: 'Consolas', monospace;
+}
+
+.log-row {
+  font-size: 12px;
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+.system { color: #4ade80; }
+.error { color: #ff6b6b; }
+.time { color: #666; margin-right: 6px; }
+
+/* 스크롤바 디자인 */
+.log-container::-webkit-scrollbar { width: 4px; }
+.log-container::-webkit-scrollbar-thumb { background: #444; }
+</style>

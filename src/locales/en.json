@@ -1,0 +1,42 @@
+{
+  "navbar": {
+    "open": "Open Project",
+    "save": "Save Project",
+    "connect": "Connect Pico",
+    "disconnect": "Disconnect",
+    "run": "Run (REPL)",
+    "stop": "Stop",
+    "upload": "Upload main.py",
+    "uploading": "Uploading..."
+  },
+  "blockly": {
+    "categories": {
+      "control": "Control",
+      "operators": "Operators",
+      "variables": "Variables",
+      "pico": "Pico Control",
+      "myBlocks": "My Blocks"
+    },
+    "blocks": {
+      "forever": "Repeat Forever",
+      "wait_seconds": "Wait %1 seconds",
+      "set_builtin_led": "Set built-in LED %1",
+      "led_off": "Turn LED off"
+    }
+  },
+  "msg": {
+    "letsStartCoding": "🚀 Let's start coding!",
+    "connectSuccess": "✅ Pico Connected Successfully",
+    "connectError": "❌ Connection Failed: {error}",
+    "disconnectSuccess": "✅ Pico Disconnected Successfully",
+    "disconnectError": "❌ Disconnection Failed: {error}",
+    "uploadSuccess": "✅ main.py Uploaded Successfully",
+    "uploadError": "❌ Upload Failed: {error}",
+    "runSuccess": "✅ Code Executed Successfully",
+    "runError": "❌ Code Execution Failed: {error}",
+    "stopSuccess": "✅ Code Execution Stopped",
+    "stopError": "❌ Stop Failed: {error}",
+    "noCodeToUpload": "❌ No code to upload. Please write some code first.",
+    "noCodeToRun": "❌ No code to run. Please write some code first."
+  }
+}

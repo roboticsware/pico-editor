@@ -118,7 +118,7 @@ async function handleUpload() {
 <template>
   <header class="navbar bg-base-300 border-b border-base-100 px-4 min-h-[60px]">
     <div class="flex-1 flex items-center gap-6">
-      <a class="text-xl font-bold text-success tracking-widest">PICO BLOCKLY</a>
+      <a class="text-xl font-bold text-success tracking-widest">PICO EDITOR</a>
       <div class="dropdown dropdown-end">
         <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-2 border border-base-100">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>

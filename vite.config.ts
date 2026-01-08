@@ -24,6 +24,12 @@ export default defineConfig({
       }
     })
   ],
+  define: {
+    // 브라우저 환경에서 'process'를 찾을 때 에러가 나지 않도록 빈 객체로 정의
+    'process.env': {},
+    'process.platform': JSON.stringify('browser'),
+    'process.version': JSON.stringify(''),
+  },
   server: {
     open: true, // 서버 시작 시 브라우저 자동 오픈
   },

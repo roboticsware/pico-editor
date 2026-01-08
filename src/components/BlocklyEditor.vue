@@ -6,6 +6,7 @@ import '@/blocks/pico-block'; // 커스텀 블록 정의 로드
 import { pythonGenerator } from 'blockly/python';
 import { usePicoStore } from '../stores/picoStore';
 import TerminalLog from './TerminalLog.vue';
+import { sanitizeCode } from '../utils/code-sanitizer';
 
 import { useI18n } from 'vue-i18n';
 import { useLangStore } from '../stores/langStore';
@@ -159,10 +160,41 @@ const themeConfig = {
 const ScratchTheme = Blockly.Theme.defineTheme(themeConfig.name, themeConfig);
 
 onMounted(() => {
-  applyLocaleToBlockly(langStore.currentLang); // 워크스페이스 생성 전, 현재 저장된 언어로 먼저 초기화
-  
+  // 파이썬 코드 제너레이터 튜닝
+  const tunePythonGenerator = () => {
+    // 1. 기본 들여쓰기를 공백 4칸으로 고정 (PEP8 준수)
+    pythonGenerator.INDENT = '    ';
+
+    // 2. 파이썬 연산자 우선순위 재정의 (괄호 억제 핵심)
+    // 숫자가 낮을수록 우선순위가 높습니다.
+    const Order = {
+      ATOMIC: 0,            // 리터럴, 변수
+      COLLECTION: 1,        // [x], {x}
+      MEMBER: 2,            // . (속성 접근)
+      FUNCTION_CALL: 2,     // f(x)
+      EXPONENTIATION: 3,    // **
+      UNARY_SIGN: 4,        // +x, -x, ~x
+      MULTIPLICATIVE: 5,    // *, /, %, //
+      ADDITIVE: 6,          // +, -
+      BITWISE_SHIFT: 7,     // <<, >>
+      BITWISE_AND: 8,       // &
+      BITWISE_XOR: 9,       // ^
+      BITWISE_OR: 10,       // |
+      COMPARISON: 11,       // <, <=, >, >=, ==, !=
+      LOGICAL_NOT: 12,      // not x
+      LOGICAL_AND: 13,      // and
+      LOGICAL_OR: 14,       // or
+      CONDITIONAL: 15,      // if-else
+      LAMBDA: 16            // lambda
+    };
+
+    Object.assign(pythonGenerator, Order); // 기존 제너레이터의 Order 객체를 덮어씌우기
+  };
+  tunePythonGenerator();
+ 
+  // Blockly 워크스페이스 생성관련 설정
+  applyLocaleToBlockly(langStore.currentLang); // 워크스페이스 생성 전, 현재 저장된 언어로 locale 먼저 초기화
   if (blocklyDiv.value) {
-    // Blockly 워크스페이스 생성
     workspace = Blockly.inject(blocklyDiv.value, {
       toolbox: getToolboxConfig(),
       renderer: 'zelos', // 기본 geras 대신 zelos 사용
@@ -190,8 +222,8 @@ onMounted(() => {
 
     // 블록 변경 이벤트 감지 -> 파이썬 코드 생성
     workspace.addChangeListener(() => {
-      const code = pythonGenerator.workspaceToCode(workspace!);
-      picoStore.setPythonCode(code);
+      const rawCode = pythonGenerator.workspaceToCode(workspace!);
+      picoStore.setPythonCode(sanitizeCode(rawCode));
     });
   }
 });

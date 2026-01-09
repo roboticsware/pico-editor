@@ -20,8 +20,12 @@
     "blocks": {
       "forever": "무한 반복하기",
       "wait_seconds": "%1 초 기다리기",
+      "tp_wait_seconds": "정해진 시간 동안 프로그램을 일시 정지합니다",
       "set_builtin_led": "내장 LED 상태를 %1 로 설정",
-      "led_off": "LED 끄기"
+      "led_off": "LED 끄기",
+      "on": "켜기",
+      "off": "끄기",
+      "tp_set_builtin_led": "Pico의 내장 LED를 제어합니다."
     }
   },
   "editor": {

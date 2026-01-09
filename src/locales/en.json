@@ -20,8 +20,12 @@
     "blocks": {
       "forever": "Repeat Forever",
       "wait_seconds": "Wait %1 seconds",
+      "tp_wait_seconds": "Wait a specified seconds for the program to stop",
       "set_builtin_led": "Set built-in LED %1",
-      "led_off": "Turn LED off"
+      "led_off": "Turn LED off",
+      "on": "ON",
+      "off": "OFF",
+      "tp_set_builtin_led": "Controls the built-in LED of the Pico."
     }
   },
   "editor": {

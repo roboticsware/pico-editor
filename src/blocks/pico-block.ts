@@ -26,13 +26,13 @@ Blockly.common.defineBlocksWithJsonArray([
       {
         "type": "field_dropdown",
         "name": "STATUS",
-        "options": [ ["켜기", "1"], ["끄기", "0"] ]
+        "options": [ ["%{BKY_ON}", "1"], ["%{BKY_OFF}", "0"] ]
       }
     ],
     "previousStatement": null,
     "nextStatement": null,
     "colour": 230,
-    "tooltip": "Pico의 내장 LED을 제어합니다.",
+    "tooltip": "%{BKY_TP_SET_BUILTIN_LED}",
     "helpUrl": ""
   },
   {
@@ -50,7 +50,7 @@ Blockly.common.defineBlocksWithJsonArray([
     "previousStatement": null,
     "nextStatement": null,
     "colour": 160,
-    "tooltip": "정해진 시간 동안 프로그램을 일시 정지합니다.",
+    "tooltip": "%{BKY_TP_WAIT_SECONDS}",
     "helpUrl": ""
   }
 ]);

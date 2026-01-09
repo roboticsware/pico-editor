@@ -5,7 +5,7 @@ import { useSerialStore } from '../stores/serialStore';
 import { useLangStore } from '../stores/langStore';
 import { useI18n } from 'vue-i18n'
 import { ref } from 'vue';
-import { Play, Square, Loader2, Upload } from 'lucide-vue-next';
+import { Unplug, Play, Square, Loader2, Upload } from 'lucide-vue-next';
 
 const codeStore = useCodeStore();
 const logStore = useLogStore();
@@ -55,7 +55,7 @@ const handleConnectionToggle = async () => {
         logStore.addLog('system', t('msg.connectSuccess'));
       }
     } catch (error: any) {
-      logStore.addLog('error', t('msg.connectError', error.message));
+      logStore.addLog('error', t('msg.connectError', {error: error.message}));
     }
   } else {
     // 연결 해제 시도
@@ -63,7 +63,7 @@ const handleConnectionToggle = async () => {
       await serialStore.disconnect();
       logStore.addLog('system', t('navbar.disconnect'));
     } catch (error: any) {
-      logStore.addLog('error', t('msg.disconnectError', error.message));
+      logStore.addLog('error', t('msg.disconnectError', {error: error.message}));
     }
   }
 };
@@ -81,7 +81,7 @@ async function handleRunToggle() {
       await serialStore.run(codeStore.pythonCode);
       logStore.addLog('system', t('msg.runSuccess'));
     } catch (error: any) {
-      logStore.addLog('error', t('msg.runError',  error.message));
+      logStore.addLog('error', t('msg.runError',  {error: error.message}));
       serialStore.isRunning = false;
     }
   } else {
@@ -89,7 +89,7 @@ async function handleRunToggle() {
       await serialStore.stop();
       logStore.addLog('system', t('msg.stopSuccess'));
     } catch (error: any) {
-      logStore.addLog('error', t('msg.stopError',  error.message));
+      logStore.addLog('error', t('msg.stopError',  {error: error.message}));
     }
   }
 }
@@ -110,7 +110,7 @@ async function handleUpload() {
       logStore.addLog('error', t('msg.uploadError'));
     }
   } catch (error: any) {
-    logStore.addLog('error', t('msg.uploadError',  error.message));
+    logStore.addLog('error', t('msg.uploadError',  {error: error.message}));
   }
 }
 </script>

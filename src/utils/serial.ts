@@ -154,13 +154,31 @@ export class PicoSerial {
   }
 
   async disconnect() {
-    if (this.writer) {
-      this.writer.releaseLock();
-      this.writer = null;
-    }
-    if (this.port) {
-      await this.port.close();
-      this.port = null;
+    try {
+      // 1. 읽기 스트림이 있다면 중단시킴
+      if (this.reader) {
+        await this.reader.cancel(); // 읽기 루프를 즉시 종료시킴
+        if (this.reader) {
+          this.reader.releaseLock();  // 스트림의 잠금을 해제
+          this.reader = null;
+        }
+      }
+
+      // 2. 출력 스트림(Writer)이 있다면 마찬가지로 처리
+      if (this.writer) {
+        this.writer.releaseLock();
+        this.writer = null;
+      }
+
+      // 3. 모든 스트림이 해제된 후 포트를 닫음
+      if (this.port) {
+        await this.port.close();
+        this.port = null;
+      }
+      
+      console.log("포트가 안전하게 닫혔습니다.");
+    } catch (error) {
+      console.error("연결 해제 중 오류:", error);
     }
   }
 }

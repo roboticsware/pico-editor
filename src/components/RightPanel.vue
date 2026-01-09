@@ -1,10 +1,10 @@
-<script setup>
+<script setup lang="ts">
 import { Splitpanes, Pane } from 'splitpanes'
 import PythonCodeViewer from './PythonCodeViewer.vue'
 import TerminalLog from './TerminalLog.vue'
 import { ref } from 'vue';
 
-const pythonViewerRef = ref(null);
+const pythonViewerRef = ref<InstanceType<typeof PythonCodeViewer> | null>(null);
 // 부모(BlocklyEditor)가 접근할 수 있도록 다시 노출
 defineExpose({ pythonViewerRef });
 </script>

@@ -1,7 +1,7 @@
 {
   "name": "pico-editor",
   "version": "0.0.1",
-  "description": "Pico Editor - Both web-based code and offline IDE editor for Raspberry Pi Pico with Blockly and Python support.",
+  "description": "Pico Editor - Both Block and Text based Coding Editor in Web/PC hybrid environment for Raspberry Pi Pico with Blockly and Python support.",
   "author": "JeongJun Lee (ReboticsWare)",
   "license": "AGPL-3.0-only",
   "keywords": [
@@ -9,6 +9,7 @@
     "Blockly",
     "Microcontroller",
     "Python",
+    "MicroPython",
     "Code Editor",
     "Web-based IDE",
     "Electron based offline IDE",

@@ -7,7 +7,7 @@ import { ref } from 'vue';
 import { useCodeStore } from '@/stores/codeStore';
 
 // 사용자가 구역 크기를 조절할 때마다 자식의 resize 메서드 호출
-const canvasRef = ref(null);
+const canvasRef = ref<InstanceType<typeof BlocklyCanvas> | null>(null);
 const onPaneResize = () => {
   if (canvasRef.value) {
     canvasRef.value.handleResize();
@@ -16,7 +16,7 @@ const onPaneResize = () => {
 
 // 코드저장필요 경고모달 관련
 const showModal = ref(false);
-const rightPanelRef = ref(null);
+const rightPanelRef = ref<InstanceType<typeof RightPanel> | null>(null);
 const handleCancel = () => {
   showModal.value = false;
   

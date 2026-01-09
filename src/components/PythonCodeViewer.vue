@@ -18,7 +18,7 @@ let view: EditorView | null = null;
 const focusTextEditor = () => {
   if (view) {
     view.focus();
-    // 커서를 맨 끝으로 보내고 싶다면 아래 코드 추가
+    // 커서를 맨 끝으로 보내기
     view.dispatch({ selection: { head: view.state.doc.length, anchor: view.state.doc.length } });
   }
 };
@@ -68,10 +68,27 @@ const saveToFile = () => {
 
 // 스토어 업데이트 중인지 확인하는 플래그 (무한 루프 방지)
 let isUpdatingFromStore = false;
+// 에디터 -> 스토어 감시
+EditorView.updateListener.of((update) => {
+  if (update.docChanged && !isUpdatingFromStore) {
+    const currentCode = update.state.doc.toString();
+    
+    // [중요] 스토어를 업데이트하기 전에 플래그를 세우지 않으면 
+    // watch가 반응하면서 커서를 초기화할 수 있습니다.
+    isUpdatingFromStore = true; 
+    codeStore.setPythonCode(currentCode);
+    
+    // 다음 틱에서 플래그 해제
+    setTimeout(() => { isUpdatingFromStore = false; }, 0);
+  }
+}),
+
 // 스토어 변경시, 에디터 동기화 (블록 조작 시)
 watch(() => codeStore.pythonCode, (newCode) => {
-  if (codeStore.isManualEditing) return; //텍스트 수정 중에는 스토어에서 오는 값 무시
-  if (view) {
+  // 사용자가 에디터를 수정 중(ManualEditing)이거나 이미 업데이트 중이면 무시
+  if (isUpdatingFromStore || codeStore.isManualEditing) return;
+
+  if (view && view.state.doc.toString() !== newCode) {
     isUpdatingFromStore = true;
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: newCode }
@@ -108,5 +125,34 @@ watch(() => codeStore.pythonCode, (newCode) => {
 :deep(.cm-content) {
   font-family: 'Fira Code', monospace;
   font-size: 14px;
+}
+/* 커서 스타일 (깜빡이는 선) */
+:deep(.cm-editor .cm-cursor) {
+  border-left: 3px solid #ffcc00 !important; /* 금색 커서 */
+  margin-left: -1.5px; /* 두꺼워진 만큼 정렬 조정 */
+}
+
+/* 현재 활성화된 줄(포커스 되었을 때) 배경색 */
+:deep(.cm-editor.cm-focused .cm-activeLine) {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* 현재 활성화된 줄의 줄번호 창(Gutter) 배경색 */
+:deep(.cm-editor.cm-focused .cm-activeLineGutter) {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  font-weight: bold;
+}
+
+/* 줄번호 창 전체 스타일 */
+:deep(.cm-gutters) {
+  background-color: #282c34 !important;
+  border-right: 1px solid #3e4451 !important;
+  color: #4b5263 !important;
+}
+
+/* 선택 영역(드래그) 색상 */
+:deep(.cm-selectionBackground) {
+  background-color: rgba(100, 150, 255, 0.3) !important;
 }
 </style>

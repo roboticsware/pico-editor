@@ -8,8 +8,14 @@ Pico Editor - Both Block and Text based Coding Editor in Web/PC hybrid environme
 ## Web-based Demo
 [https://pico-editor.vercel.com](https://pico-editor.vercel.com)
 
-## Project Setup
+## Project Dev Env Setup
+### Get souce codes
+```sh
+git clone https://github.com/roboticsware/pico-editor
+cd pico-editor
+```
 
+### Install Dependancies
 ```sh
 npm install
 ```

@@ -24,6 +24,19 @@
       "led_off": "Turn LED off"
     }
   },
+  "editor": {
+    "saveToFile": "💾 Save as (.py) file",
+    "modified": "Modified",
+    "modal": {
+      "title": "Handle Changes",
+      "description": "<strong>Please note that any manual code changes will be lost if you continue with block coding. To keep your edits safe, we recommend saving them to a separate file first.<br/><br/>Do you want to continue with block coding?</strong>",
+      "confirm": "Yes (OK)",
+      "cancel": "No (Cancel)"
+    }
+  },
+  "popup": {
+    "dontShowAgain": "Don't show again"
+  },
   "msg": {
     "letsStartCoding": "🚀 Let's start coding!",
     "connectSuccess": "✅ Pico Connected Successfully",

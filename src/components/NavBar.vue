@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { usePicoStore } from '../stores/picoStore';
+import { useCodeStore } from '../stores/codeStore';
 import { useLogStore } from '../stores/logStore';
 import { useSerialStore } from '../stores/serialStore';
 import { useLangStore } from '../stores/langStore';
 import { useI18n } from 'vue-i18n'
 import { ref } from 'vue';
-import { Play, Square, Loader2, Save } from 'lucide-vue-next';
+import { Play, Square, Loader2, Upload } from 'lucide-vue-next';
 
-const picoStore = usePicoStore();
+const codeStore = useCodeStore();
 const logStore = useLogStore();
 const serialStore = useSerialStore();
 
@@ -70,7 +70,7 @@ const handleConnectionToggle = async () => {
 
 // 실행 핸들러
 async function handleRunToggle() {
-  if (!picoStore.pythonCode) {
+  if (!codeStore.pythonCode) {
     alert(t('msg.noCodeToRun'));
     return;
   }
@@ -78,7 +78,7 @@ async function handleRunToggle() {
   if (!serialStore.isRunning) {
     try {
       // Pinia 스토어에 저장된 현재 블록 코드를 전송
-      await serialStore.run(picoStore.pythonCode);
+      await serialStore.run(codeStore.pythonCode);
       logStore.addLog('system', t('msg.runSuccess'));
     } catch (error: any) {
       logStore.addLog('error', t('msg.runError',  error.message));
@@ -96,14 +96,14 @@ async function handleRunToggle() {
 
 // 업로드 핸들러
 async function handleUpload() {
-  if (!picoStore.pythonCode) {
+  if (!codeStore.pythonCode) {
     alert(t('msg.noCodeToUpload'));
     return;
   }
 
   try {
     // Pinia 스토어에 저장된 현재 블록 코드를 전송
-    const success = await serialStore.upload(picoStore.pythonCode);
+    const success = await serialStore.upload(codeStore.pythonCode);
     if (!serialStore.hasError && success) {
       logStore.addLog('system', t('msg.uploadSuccess'));
     } else {
@@ -168,7 +168,7 @@ async function handleUpload() {
         :disabled="!serialStore.isConnected || serialStore.isUploading"
       >
         <Loader2 v-if="serialStore.isUploading" class="w-4 h-4 animate-spin" />
-        <Save v-else class="w-4 h-4" />
+        <Upload v-else class="w-4 h-4" />
         
         <span>
           {{ serialStore.isUploading ? $t('navbar.uploading') : $t('navbar.upload') }}

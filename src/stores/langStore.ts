@@ -3,7 +3,7 @@ import { ref, watch } from 'vue';
 import i18n from '../i18n';
 
 export const useLangStore = defineStore('lang', () => {
-  // 1. 우선순위: 로컬 스토리지 -> 브라우저 기본 언어 -> 한국어
+  // 언어 우선순위: 로컬 스토리지 -> 브라우저 기본 언어 -> 한국어
   const savedLang = localStorage.getItem('lang') || (navigator.language.startsWith('ko') ? 'ko' : 'en');
   const currentLang = ref(savedLang);
 

@@ -2,6 +2,7 @@
 import { ref, watch, nextTick, onMounted } from 'vue';
 import { useLogStore } from '../stores/logStore.ts';
 import i18n from '@/i18n';
+import { TerminalIcon } from 'lucide-vue-next';
 
 const logStore = useLogStore();
 const scrollBox = ref<HTMLElement | null>(null);
@@ -20,7 +21,11 @@ onMounted(() => {
 
 <template>
   <div class="terminal-wrapper">
-    <div class="terminal-header">TERMINAL LOG</div>
+    <div class="p-2 bg-base-100 text-xs font-bold flex justify-between items-center">
+      <span class="flex items-center gap-2">
+        <TerminalIcon :size="14" />TERMINAL LOG
+      </span>
+    </div>
     <div class="log-container" ref="scrollBox">
       <div v-for="(log, i) in logStore.logs" :key="i" :class="['log-row', log.type]">
         <span class="time">[{{ log.time }}]</span>
@@ -31,40 +36,32 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.terminal-wrapper {
-  width: 100%;
-  height: 100%; /* 부모 .terminal-area의 높이를 따름 */
-  display: flex;
-  flex-direction: column;
-  background: #000; /* 완전 검정으로 구분 */
-}
+  .terminal-wrapper {
+    width: 100%;
+    height: 100%;  /* 부모 .terminal-area의 높이를 따름 */
+    display: flex;
+    flex-direction: column;
+    background: #000; /* 완전 검정으로 구분 */
+  }
+  
+  .log-container {
+    flex: 1;
+    padding: 8px;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace;
+  }
 
-.terminal-header {
-  font-size: 11px;
-  padding: 4px 8px;
-  background: #333;
-  color: #aaa;
-  font-weight: bold;
-}
+  .log-row {
+    font-size: 12px;
+    margin-bottom: 2px;
+    line-height: 1.4;
+  }
 
-.log-container {
-  flex: 1;
-  padding: 8px;
-  overflow-y: auto;
-  font-family: 'Consolas', monospace;
-}
+  .system { color: #4ade80; }
+  .error { color: #ff6b6b; }
+  .time { color: #666; margin-right: 6px; }
 
-.log-row {
-  font-size: 12px;
-  margin-bottom: 2px;
-  line-height: 1.4;
-}
-
-.system { color: #4ade80; }
-.error { color: #ff6b6b; }
-.time { color: #666; margin-right: 6px; }
-
-/* 스크롤바 디자인 */
-.log-container::-webkit-scrollbar { width: 4px; }
-.log-container::-webkit-scrollbar-thumb { background: #444; }
+  /* 스크롤바 디자인 */
+  .log-container::-webkit-scrollbar { width: 4px; }
+  .log-container::-webkit-scrollbar-thumb { background: #444; }
 </style>

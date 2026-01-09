@@ -28,4 +28,13 @@
 .blocklyFlyout:hover .blocklyScrollbarHandle {
     fill-opacity: 0.4; /* 마우스를 올리면 슬쩍 나타남 */
 }
+
+/* splitpanes 처음 나타날 때 슥 밀리는 것처럼 보이는 현상 때문에 꺼둠 */
+.splitpanes__pane {
+  transition: none !important;
+}
+/* 그러나, 드래그할 때만 부드럽게 움직이고 싶다면 아래와 같이 특정 상황에만 부여 */
+.splitpanes--resizing .splitpanes__pane {
+  transition: none;
+}
 </style>

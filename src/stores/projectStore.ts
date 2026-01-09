@@ -3,7 +3,7 @@ import * as Blockly from 'blockly';
 
 export const useProjectStore = defineStore('project', () => {
   
-  // 1. 파일 저장 로직
+  // 1. 프로젝트 파일 저장 로직
   const saveProject = (workspace: Blockly.WorkspaceSvg) => {
     const json = Blockly.serialization.workspaces.save(workspace);
     const data = JSON.stringify(json);
@@ -21,7 +21,7 @@ export const useProjectStore = defineStore('project', () => {
     URL.revokeObjectURL(url);
   };
 
-  // 2. 파일 로드 로직
+  // 2. 프로젝트 파일 로드 로직
   const loadProject = (workspace: Blockly.WorkspaceSvg, file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {

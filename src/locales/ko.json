@@ -24,6 +24,19 @@
       "led_off": "LED 끄기"
     }
   },
+  "editor": {
+    "saveToFile": "💾 (.py)파일로 저장",
+    "modified": "수정됨",
+    "modal": {
+      "title": "변경사항 처리",
+      "description": "<strong>블록코딩을 하게하면 현재 수정된 텍스트 코드는 잃어버리게 되므로, 수정한 코드의 안전을 확보하시려면 파일로 따로 저장해두는게 필요합니다. <br/><br/>블록코딩을 계속 하시겠나요?</strong>",
+      "confirm": "네 (OK)",
+      "cancel": "아니오 (Cancel)"
+    }
+  },
+  "popup": {
+    "dontShowAgain": "다음에 다시 보지 않음"
+  },
   "msg": {
     "letsStartCoding": "🚀 자! 이제 코딩을 시작해보세요~!",
     "connectSuccess": "✅ Pico 연결 성공",

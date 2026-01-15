@@ -7,7 +7,8 @@
     "run": "실행 (REPL)",
     "stop": "중지",
     "upload": "main.py 업로드",
-    "uploading": "업로드 중..."
+    "uploading": "업로드 중...",
+    "lib_manager": "라이브러리 관리자"
   },
   "blockly": {
     "categories": {

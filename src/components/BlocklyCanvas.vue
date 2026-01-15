@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import * as Blockly from 'blockly';
-import 'blockly/blocks'; // 표준 블록 정의(Logic, Loops, Math 등) 로드
-import '@/blocks/pico-block'; // 커스텀 블록 정의 로드
 import { pythonGenerator } from 'blockly/python';
 import { useCodeStore } from '../stores/codeStore';
-import TerminalLog from './TerminalLog.vue';
 import { sanitizeCode } from '../utils/code-sanitizer';
+import { useModeStore } from '../stores/modeStore';
+import { useProjectStore } from '../stores/projectStore';
+import { loadModeBlocks } from '../blocks/loader';
 
 import { useI18n } from 'vue-i18n';
 import { useLangStore } from '../stores/langStore';
@@ -21,7 +21,6 @@ const blocklyDiv = ref<HTMLElement | null>(null);
 let workspace: Blockly.WorkspaceSvg;
 
 // 부모(HomeView)에게 이 함수들을 노출
-const getWorkspace = () => workspace;
 const getPythonCode = () => {
   // 하이라이트 로직이 포함된 코드를 생성하려면 여기서 처리가능
   return pythonGenerator.workspaceToCode(workspace);
@@ -35,7 +34,6 @@ const handleResize = () => {
 };
 
 defineExpose({
-  getWorkspace,
   getPythonCode,
   handleResize
 });
@@ -55,71 +53,28 @@ const applyLocaleToBlockly = (lang: string) => {
 };
 
 // 언어 변경 감시
-watch(() => langStore.currentLang, (newLang) => {
+watch(() => langStore.currentLang, async(newLang) => {
   if (workspace) {
     applyLocaleToBlockly(newLang);
     // 툴박스(카테고리 이름) 갱신
-    workspace.updateToolbox(getToolboxConfig());
+    workspace.updateToolbox(await getToolboxConfig());
     // 이미 화면에 놓인 블록들의 텍스트 갱신 (직렬화 방식으로 리로드가 가장 확실함)
     const state = Blockly.serialization.workspaces.save(workspace);
     Blockly.serialization.workspaces.load(state, workspace);
   }
 }, { immediate: true });
 
-// 초기 블록 설정 (Toolbox)
-const getToolboxConfig = () => ({
-  kind: 'categoryToolbox',
-  "contents": [
-    {
-      "kind": "category",
-      "name": t('blockly.categories.control'), // Logic + Loops 통합
-      "colour": "#FFAB19",
-      "contents": [
-        { "kind": "block", "type": "controls_if" },
-        { "kind": "block", "type": "logic_compare" },
-        { "kind": "block", "type": "controls_repeat_ext" },
-        { "kind": "block", "type": "controls_whileUntil" },
-        { "kind": "block", "type": "base_forever" },
+const getToolboxConfig = async () => {
+  // 1. 고도화된 로더를 통해 현재 모드와 언어에 맞는 툴박스를 가져옵니다.
+  // 로더 내부에서 이미 Blockly.Msg 번역 병합이 완료된 상태여야 합니다.
+  const toolbox = await loadModeBlocks(modeStore.currentMode);
+  if (!toolbox) return { kind: 'categoryToolbox', contents: [] };
+  return toolbox;
+};
 
-      ]
-    },
-    {
-      "kind": "category",
-      "name": t('blockly.categories.operators'), // Math + Logic 연산
-      "colour": "#59C059",
-      "contents": [
-        { "kind": "block", "type": "math_number" },
-        { "kind": "block", "type": "math_arithmetic" },
-        { "kind": "block", "type": "math_random_int" },
-        { "kind": "block", "type": "logic_operation" },
-        { "kind": "block", "type": "logic_negate" }
-      ]
-    },
-    {
-      "kind": "category",
-      "name": t('blockly.categories.variables'),
-      "colour": "#FF8C1A",
-      "custom": "VARIABLE" // 변수는 Blockly가 자동으로 생성해주는 'custom' 속성 권장
-    },
-    {
-      "kind": "category",
-      "name": t('blockly.categories.pico'), // 하드웨어 전용 카테고리
-      "colour": "#4C97FF", // 스크래치 '동작' 카테고리 색상과 유사
-      "contents": [
-        { "kind": "block", "type": "pico_led_builtin" }, // 미리 정의했다고 가정된 블록들
-        { "kind": "block", "type": "base_delay" }
-      ]
-    },
-    {
-      "kind": "category",
-      "name": t('blockly.categories.myBlocks'), // Functions
-      "colour": "#FF6680",
-      "custom": "PROCEDURE"
-    }
-  ],
-});
-
-// 1. 테마 설정 객체 정의
+// Blockly 초기화 부분
+const modeStore = useModeStore();
+// 테마 설정 객체 정의
 const themeConfig = {
   'name': 'scratch_theme',
   'base': Blockly.Themes.Classic,
@@ -168,15 +123,83 @@ const themeConfig = {
 };
 const ScratchTheme = Blockly.Theme.defineTheme(themeConfig.name, themeConfig);
 
+const initBlockly = async () => {
+  if (!blocklyDiv.value || !modeStore.currentMode) return;
+
+  // 기존 워크스페이스가 있다면 삭제 (메모리 관리)
+  // if (workspace) {
+  //   workspace.dispose();
+  // }
+
+  // 모드에 맞는 블록 및 툴박스 로드 (동적 로딩)
+  const toolboxConfig = await getToolboxConfig();
+
+  workspace = Blockly.inject(blocklyDiv.value, {
+    toolbox: toolboxConfig,
+    renderer: 'zelos', // 기본 geras 대신 zelos 사용
+      grid: { spacing: 20, length: 3, colour: '#333', snap: true }, // 코딩영역에 그리드 생성
+      horizontalLayout: false,
+      toolboxPosition: 'start', // 블록을 꺼내면 카테고리 창을 자동으로 닫음
+      move: { // Flyout이 워크스페이스를 밀어내지 않고 위에 뜨게 함
+        scrollbars: {
+          vertical: true,
+          horizontal: true
+        },
+        drag: true,
+        wheel: true
+      },
+      theme: ScratchTheme, // 정의한 테마 적용
+      zoom: {
+        controls: true,
+        wheel: true,
+        startScale: 1.0,
+        maxScale: 3,
+        minScale: 0.3,
+        scaleSpeed: 1.2,
+      },
+      // media: 'blockly/media/', // Public 폴더 내 미디어 경로 확인 필요
+  });
+
+  // 스토어에 워크스페이스 등록 (다른 컴포넌트에서 접근 가능하도록)
+  projectStore.setWorkspace(workspace);
+
+  // 블록 변경 이벤트 감지 -> 파이썬 코드 생성
+  workspace.addChangeListener((event) => {
+    if (event.isUiEvent) return;
+
+    try {
+      if (codeStore.isManualEditing) {
+          console.log("텍스트 수정 중이므로 블록 업데이트를 건너뜁니다.");
+          return;
+      }
+      const rawCode = pythonGenerator.workspaceToCode(workspace!);
+      codeStore.setPythonCode(sanitizeCode(rawCode));
+    } catch (error) {
+      console.error("파이썬 코드 생성 중 오류 발생:", error);
+    }
+  });
+
+  Blockly.svgResize(workspace);
+};
+
+// 모드가 바뀔 때마다 블록리 재설정
+watch(() => modeStore.currentMode, async (newMode) => {
+  if (newMode) {
+    workspace.clear(); // 모드 변경 시 워크스페이스를 비우기
+    await initBlockly();
+  }
+});
+
+// 사용자가 고치고 아직 저장하지 않은 텍스트가 있다면 경고 모달 띄우기
 const checkManualEdit = () => {
-  // 사용자가 고치고 아직 저장하지 않은 텍스트가 있다면 경고 모달 띄우기
   if (codeStore.hasUnsavedChanges) {
     emit('show-save-warnning'); 
   }
 }
 
+const projectStore = useProjectStore();
 onMounted(async () => {
-  // 파이썬 코드 제너레이터 튜닝
+  // 파이썬 코드 제너레이터 튜닝하여 불필요한 소괄호 억제
   const tunePythonGenerator = () => {
     // 1. 기본 들여쓰기를 공백 4칸으로 고정 (PEP8 준수)
     pythonGenerator.INDENT = '    ';
@@ -208,44 +231,9 @@ onMounted(async () => {
   };
   tunePythonGenerator();
  
-  // Blockly 워크스페이스 생성관련 설정
+  // Blockly 워크스페이스 생성
   applyLocaleToBlockly(langStore.currentLang); // 워크스페이스 생성 전, 현재 저장된 언어로 locale 먼저 초기화
-  if (blocklyDiv.value) {
-    workspace = Blockly.inject(blocklyDiv.value, {
-      toolbox: getToolboxConfig(),
-      renderer: 'zelos', // 기본 geras 대신 zelos 사용
-      grid: { spacing: 20, length: 3, colour: '#333', snap: true }, // 코딩영역에 그리드 생성
-      horizontalLayout: false,
-      toolboxPosition: 'start', // 블록을 꺼내면 카테고리 창을 자동으로 닫음
-      move: { // Flyout이 워크스페이스를 밀어내지 않고 위에 뜨게 함
-        scrollbars: {
-          vertical: true,
-          horizontal: true
-        },
-        drag: true,
-        wheel: true
-      },
-      theme: ScratchTheme, // 정의한 테마 적용
-      zoom: {
-        controls: true,
-        wheel: true,
-        startScale: 1.0,
-        maxScale: 3,
-        minScale: 0.3,
-        scaleSpeed: 1.2,
-      },
-    });
-
-    // 블록 변경 이벤트 감지 -> 파이썬 코드 생성
-    workspace.addChangeListener(() => {
-        if (codeStore.isManualEditing) {
-            console.log("텍스트 수정 중이므로 블록 업데이트를 건너뜁니다.");
-            return;
-        }
-      const rawCode = pythonGenerator.workspaceToCode(workspace!);
-      codeStore.setPythonCode(sanitizeCode(rawCode));
-    });
-  }
+  initBlockly();
 
   // splitpanes 처음 나타날 때 빈 공간 생기는 현상을 방지용
   await nextTick();
@@ -257,6 +245,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (workspace) {
     workspace.dispose();
+    projectStore.setWorkspace(null as any); // 컴포넌트 파괴 시 참조 제거 (메모리 누수 방지)
   }
 });
 </script>

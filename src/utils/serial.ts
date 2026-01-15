@@ -104,53 +104,50 @@ export class PicoSerial {
     await this.write('\x04'); // Soft Reset - HW 재부팅없이 새로 시작하는 것처럼 초기화 한 후 전송된 코드 실행
   }
 
-  async uploadAsMainPy(code: string, onProgress: (p: number) => void) {
+  async uploadFile(filename: string, code: string, onProgress?: (p: number) => void, shouldReset: boolean = false) {
     if (!this.writer) return;
 
-    // 1. 준비 작업: 중단 및 대기
-    await this.write('\x03'); // Ctrl+C
+    // 1. 준비 작업: 현재 실행 중인 코드 중단 (Ctrl+C)
+    await this.write('\x03'); 
     await new Promise(r => setTimeout(r, 300));
 
     // 2. Raw REPL 모드 진입 (Ctrl+A)
-    // 이 모드에서는 코드가 화면에 에코되지 않아 훨씬 안정적입니다.
     await this.write('\x01'); 
     await new Promise(r => setTimeout(r, 100));
 
-    // 3. 코드를 Base64로 인코딩 (UTF-8 대응)
-    // btoa는 기본적으로 latin1을 기대하므로 유니코드 처리를 해줍니다.
+    // 3. 코드를 Base64로 인코딩 (한글/특수문자 대응 UTF-8)
     const base64Code = btoa(encodeURIComponent(code).replace(/%([0-9A-F]{2})/g, (match, p1) => {
       return String.fromCharCode(parseInt(p1, 16));
     }));
 
-    // 4. 피코에서 실행할 저장 스크립트 구성
+    // 4. 저장 스크립트 구성 (전달받은 filename 사용)
     const saveScript = [
-      "import ubinascii, machine", // 마이크로파이썬의 ubinascii 모듈을 사용하여 디코딩
+      "import ubinascii",
       `b64 = '${base64Code}'`,
-      "with open('main.py', 'wb') as f:",
+      `with open('${filename}', 'wb') as f:`, // 인자로 받은 파일명 적용
       "    f.write(ubinascii.a2b_base64(b64))",
-      "machine.reset()"      // 저장 후 즉시 리셋하여 main.py 실행     
-    ].join('\n') + '\n\x04'; // 전송되 온 코드의 실행을 위한 Ctrl+D를 마지막에 붙임
-    
+      shouldReset ? "import machine; machine.reset()" : "" // 옵션에 따른 리셋 여부
+    ].filter(line => line !== "").join('\n') + '\n\x04'; 
 
     // 5. 데이터 쪼개서 보내기 (Chunk 전송)
     const encoder = new TextEncoder();
-    const data = encoder.encode(saveScript + '\r\n');
+    const data = encoder.encode(saveScript);
     const chunkSize = 64;
 
     for (let i = 0; i < data.length; i += chunkSize) {
       const chunk = data.slice(i, i + chunkSize);
       await this.writer.write(chunk);
       
-      // 진행률 콜백
-      const progress = Math.round(((i + chunk.length) / data.length) * 100);
-      onProgress(progress);
+      if (onProgress) {
+        const progress = Math.round(((i + chunk.length) / data.length) * 100);
+        onProgress(progress);
+      }
       
-      // 시리얼 버퍼 오버플로우 방지를 위한 아주 짧은 지연
-      await new Promise(r => setTimeout(r, 30)); 
+      await new Promise(r => setTimeout(r, 20)); 
     }
-    // (옵션) 위에 machine.reset()이 있어, 구지 일반 REPL 모드로 복귀는 반드시 필요지 않으나, 
-    // machine.reset() 지연에 대비한 일종의 보험용
-    await this.write('\x02'); // Ctrl+B
+
+    // 6. 정상 모드 복귀 (Ctrl+B)
+    await this.write('\x02');
   }
 
   async disconnect() {
@@ -180,6 +177,76 @@ export class PicoSerial {
     } catch (error) {
       console.error("연결 해제 중 오류:", error);
     }
+  }
+
+  
+  // 파이썬 명령을 실행하고 그 출력 결과(stdout)를 반환합니다.
+  async executeCommand(command: string): Promise<string> {
+    if (!this.port || !this.port.writable) throw new Error("Not connected");
+
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const writer = this.port.writable.getWriter();
+
+    try {
+      // 1. 명령 전송 (\r\n 필수)
+      await writer.write(encoder.encode(command + "\r\n"));
+      writer.releaseLock();
+
+      // 2. 결과 읽기 (간단한 구현을 위해 잠시 대기하며 버퍼를 모음)
+      // 실제 구현 시에는 특정 종료 문자(>>>)가 나올 때까지 읽는 것이 정확합니다.
+      return await this.readResponse();
+    } catch (err) {
+      writer.releaseLock();
+      throw err;
+    }
+  }
+
+  private async readResponse(): Promise<string> {
+    if (!this.port || !this.port.readable) return "";
+    
+    const reader = this.port.readable.getReader();
+    const decoder = new TextDecoder();
+    let response = "";
+    
+    try {
+      // 대략 500ms 동안 들어오는 데이터를 모읍니다. (네트워크/보드 상태에 따라 조절)
+      const timeout = setTimeout(() => reader.cancel(), 500);
+      
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        response += decoder.decode(value);
+        // MicroPython REPL 종료 기호(>>> )가 보이면 읽기 중단
+        if (response.includes(">>> ")) break;
+      }
+      clearTimeout(timeout);
+    } finally {
+      reader.releaseLock();
+    }
+    
+    return response;
+  }
+
+  // 파이썬 리스트 문자열 파싱 로직
+  async parsePythonList(str: string): Promise<string[]> {
+    const match = str.match(/\[(.*?)\]/);
+    if (!match || !match[1]) return [];
+    return match[1].split(',').map(s => s.trim().replace(/['"]/g, '')).filter(s => s);
+  };
+
+  // 피코 보드의 파일 목록 가져오기
+  async getFileList(): Promise<string[]> {
+    const command = "import os; print(os.listdir())\r\n";
+    const result = await this.executeCommand(command); // 명령 실행 후 결과 문자열 파싱
+    // 결과 예시: "['main.py', 'pico_utils.py']" -> 배열로 변환 로직 필요
+    return this.parsePythonList(result);
+  }
+
+  // 파일 삭제
+  async deleteFile(filename: string) {
+    // MicroPython에서 os.remove('파일명') 명령을 실행합니다.
+    await this.executeCommand(`import os; os.remove('${filename}')`);
   }
 }
 

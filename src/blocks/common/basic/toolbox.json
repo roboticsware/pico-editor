@@ -1,0 +1,165 @@
+
+  {
+    "kind": "category",
+    "name": "BASIC",
+    "colour": "#ff0066",
+    "contents": [
+      { "kind": "label", "text": "Imports", "web-class": "myLabelStyle" },
+      { "kind": "block", "type": "import_time" },
+      { "kind": "block", "type": "import_math" },
+      { "kind": "block", "type": "random" },
+
+      { "kind": "sep" },
+      { "kind": "label", "text": "Statements", "web-class": "myLabelStyle" },
+      {
+        "kind": "block",
+        "type": "typeanything",
+        "inputs": {
+          "stuff": { "shadow": { "type": "textinline", "fields": { "text": "     " } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "varinlines",
+        "inputs": {
+          "value": { "shadow": { "type": "textinline", "fields": { "text": "1" } } }
+        }
+      },
+      { "kind": "block", "type": "variables_get" },
+      {
+        "kind": "block",
+        "type": "df",
+        "inputs": {
+          "def": { "shadow": { "type": "textinline", "fields": { "text": "function_name" } } },
+          "params": { "shadow": { "type": "textinline", "fields": { "text": "" } } }
+        }
+      },
+      { "kind": "block", "type": "pass" },
+      {
+        "kind": "block",
+        "type": "printnew",
+        "inputs": {
+          "text": { "shadow": { "type": "textinline", "fields": { "text": "Hello World" } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "varprint",
+        "inputs": {
+          "var": { "shadow": { "type": "textinline", "fields": { "text": "Variable" } } }
+        }
+      },
+
+      { "kind": "sep" },
+      { "kind": "label", "text": "Logic", "web-class": "myLabelStyle" },
+      {
+        "kind": "block",
+        "type": "internal",
+        "inputs": {
+          "first": { "shadow": { "type": "textinline", "fields": { "text": "0" } } },
+          "last": { "shadow": { "type": "textinline", "fields": { "text": "0" } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "andor",
+        "inputs": {
+          "first": { "shadow": { "type": "textinline", "fields": { "text": "True" } } },
+          "last": { "shadow": { "type": "textinline", "fields": { "text": "True" } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "not",
+        "inputs": {
+          "bool": { "shadow": { "type": "textinline", "fields": { "text": "True" } } }
+        }
+      },
+
+      { "kind": "sep" },
+      { "kind": "label", "text": "Loops", "web-class": "myLabelStyle" },
+      {
+        "kind": "block",
+        "type": "whileout",
+        "inputs": {
+          "cond": { "shadow": { "type": "textinline", "fields": { "text": "True" } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "for",
+        "inputs": {
+          "letter": { "shadow": { "type": "textinline", "fields": { "text": "i" } } },
+          "no": { "shadow": { "type": "textinline", "fields": { "text": "number" } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "advancedforloops",
+        "inputs": {
+          "x": { "shadow": { "type": "textinline", "fields": { "text": "x" } } },
+          "y": { "shadow": { "type": "textinline", "fields": { "text": "y" } } }
+        }
+      },
+      { "kind": "block", "type": "break" },
+
+      { "kind": "sep" },
+      { "kind": "label", "text": "Conditions", "web-class": "myLabelStyle" },
+      {
+        "kind": "block",
+        "type": "ifinline",
+        "inputs": {
+          "iftext": { "shadow": { "type": "textinline", "fields": { "text": "True" } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "elifinline",
+        "inputs": {
+          "iftext": { "shadow": { "type": "textinline", "fields": { "text": "True" } } }
+        }
+      },
+      { "kind": "block", "type": "else" },
+      {
+        "kind": "block",
+        "type": "with",
+        "inputs": {
+          "iftext": { "shadow": { "type": "textinline", "fields": { "text": "" } } },
+          "iftext2": { "shadow": { "type": "textinline", "fields": { "text": "" } } }
+        }
+      },
+      { "kind": "block", "type": "try" },
+      {
+        "kind": "block",
+        "type": "except",
+        "inputs": {
+          "iftext": { "shadow": { "type": "textinline", "fields": { "text": "" } } }
+        }
+      },
+
+      { "kind": "sep" },
+      { "kind": "label", "text": "Definitions", "web-class": "myLabelStyle" },
+      {
+        "kind": "block",
+        "type": "define",
+        "inputs": {
+          "1": { "shadow": { "type": "textinline", "fields": { "text": "" } } },
+          "2": { "shadow": { "type": "textinline", "fields": { "text": "" } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "return2",
+        "inputs": {
+          "return": { "shadow": { "type": "textinline", "fields": { "text": "" } } }
+        }
+      },
+      {
+        "kind": "block",
+        "type": "class",
+        "inputs": {
+          "class": { "shadow": { "type": "textinline", "fields": { "text": "classname" } } }
+        }
+      }
+    ]
+  }

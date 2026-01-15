@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { serial } from '../utils/serial';
+import { AVAILABLE_LIBRARIES, type Library } from '@/constants/libraries';
 
 export const useSerialStore = defineStore('serial', () => {
   const isConnected = ref(false);
@@ -9,6 +10,9 @@ export const useSerialStore = defineStore('serial', () => {
   const uploadProgress = ref(0); // 업로드 진행률
   const errorLogs = ref<{time: string, content: string}[]>([]); // 에러만 따로 보관
   const hasError = ref(false); // UI에서 에러 창을 띄울지 결정하는 플래그
+  const installedFiles = ref<string[]>([]);
+  const libraries = ref<Library[]>(AVAILABLE_LIBRARIES);
+  const isSyncing = ref(false);
 
   // 공용 함수: 연결하기
   async function connect() {
@@ -50,9 +54,9 @@ export const useSerialStore = defineStore('serial', () => {
     uploadProgress.value = 0;
     try {
       // 1. 업로드 로직 실행 (serial.ts의 함수 호출)
-      await serial.uploadAsMainPy(code, (p) => {
+      await serial.uploadFile('main.py', code, (p) => {
         uploadProgress.value = p; // UI에서 0~100 숫자로 활용 가능
-      });
+      }, true); // 실행 코드이므로 리셋 필요
       // 업로드 성공 후: 기기가 리셋되므로 연결을 끊긴 상태로 변경
       isConnected.value = false; 
       isRunning.value = false;
@@ -90,5 +94,50 @@ export const useSerialStore = defineStore('serial', () => {
     clearErrorLogs();
   }
 
-  return { isConnected, isRunning, isUploading, uploadProgress, errorLogs, hasError, clearErrorsLogs: clearErrorLogs, connect, disconnect, upload, run, stop };
+  // 현재 보드에 설치된 파일 목록 가져오기
+  const syncFileList = async () => {
+    if (!isConnected.value) return;
+    isSyncing.value = true;
+    try {
+      installedFiles.value = await serial.getFileList();
+    } catch (error) {
+      console.error("Sync failed:", error);
+    } finally {
+      isSyncing.value = false;
+    }
+  };
+
+  const installLibrary = async (lib: Library) => {
+    isUploading.value = true;
+    try {
+      await serial.uploadFile(lib.fileName, lib.content, (p) => {
+        uploadProgress.value = p; // UI에서 0~100 숫자로 활용 가능
+      }, false); // 라이브러리 설치 시에는 리셋하지 않음
+      
+      await syncFileList();
+    } finally {
+      isUploading.value = false;
+    }
+  };
+
+  const uninstallLibrary = async (fileName: string) => {
+    isUploading.value = true;
+    try {
+      await serial.deleteFile(fileName);
+      await syncFileList();
+    } finally {
+      isUploading.value = false;
+    }
+  };
+
+  return { 
+    isConnected, isRunning, isUploading, uploadProgress, errorLogs, hasError, clearErrorsLogs: clearErrorLogs, connect, disconnect, upload, run, stop,
+    installedFiles, 
+    libraries, 
+    isSyncing, 
+    syncFileList, 
+    installLibrary, 
+    uninstallLibrary, 
+    isInstalled: computed(() => (name: string) => installedFiles.value.includes(name)),
+  };
 });

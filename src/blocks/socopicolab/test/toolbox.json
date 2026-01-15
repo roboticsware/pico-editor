@@ -1,0 +1,15 @@
+{
+  "kind": "category",
+  "name": "LED",
+  "colour": "#673AB7",
+  "contents": [
+    {
+      "kind": "block",
+      "type": "import_picozero"
+    },
+    {
+      "kind": "block",
+      "type": "picozero_led"
+    }
+  ]
+}

@@ -1,20 +1,20 @@
 <script setup lang="ts">
 import NavBar from '../components/NavBar.vue';
 import BlocklyEditor from '../components/BlocklyEditor.vue';
+import ModeSelectModal from '../components/ModeSelectModal.vue';
+import ConfirmModal from '../components/ConfirmModal.vue';
 import { useProjectStore } from '../stores/projectStore';
-import { ref } from 'vue';
+import { useModeStore } from '../stores/modeStore';
 
 const projectStore = useProjectStore();
-const editorRef = ref();
+const modeStore = useModeStore();
 
-// workspace가 BlocklyEditor 컴포넌트에 있기 때문에 부모에서 중계해야 함
+// NavBar의 저장/불러오기 요청 중개
 const handleSave = () => {
-  const ws = editorRef.value?.getWorkspace(); 
-  if (ws) projectStore.saveProject(ws);
+  projectStore.saveProject();
 };
 const handleLoad = (file: File) => {
-  const ws = editorRef.value?.getWorkspace();
-  if (ws) projectStore.loadProject(ws, file);
+  projectStore.loadProject(file);
 };
 </script>
 
@@ -25,10 +25,10 @@ const handleLoad = (file: File) => {
       @request-load="handleLoad"
     />
     <main class="app-main">
-      <BlocklyEditor
-        ref="editorRef"
-      />
+      <BlocklyEditor v-if="modeStore.currentMode"/>
     </main>
+    <ModeSelectModal />
+    <ConfirmModal />
   </div>
 </template>
 

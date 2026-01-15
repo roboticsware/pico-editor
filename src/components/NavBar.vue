@@ -3,16 +3,32 @@ import { useCodeStore } from '../stores/codeStore';
 import { useLogStore } from '../stores/logStore';
 import { useSerialStore } from '../stores/serialStore';
 import { useLangStore } from '../stores/langStore';
+import { useModeStore } from '../stores/modeStore';
 import { useI18n } from 'vue-i18n'
 import { ref } from 'vue';
+import { confirmCustom } from '../services/modal-confirm';
 import { Unplug, Play, Square, Loader2, Upload } from 'lucide-vue-next';
 
 const codeStore = useCodeStore();
 const logStore = useLogStore();
 const serialStore = useSerialStore();
+const modeStore = useModeStore();
+const langStore = useLangStore();
+
+// 모드 변경 경고 모달
+const handleModeChangeRequest = async () => {
+  // 함수 호출 한 줄로 모달을 띄우고 결과를 기다림
+  const ok = await confirmCustom(
+    '모드 변경 주의', 
+    '모드를 변경하면 작성 중인 블록이 사라질 수 있습니다. 계속할까요?'
+  );
+
+  if (ok) {
+    modeStore.setMode(null); // 사용자가 '확인'을 눌렀을 때만 모드 초기화
+  }
+};
 
 // 다국어 지원
-const langStore = useLangStore();
 const { t } = useI18n();
 // 언어 변경 및 드롭다운 닫기 처리
 const handleLangChange = (lang: 'ko' | 'en') => {
@@ -24,7 +40,7 @@ const handleLangChange = (lang: 'ko' | 'en') => {
   }
 };
 
-// BlocklyEditor의 workspace가 필요하여, 직접 호출할 수 없고, 부모를 중개자로 사용
+// 부모를 중개자로 사용
 const emit = defineEmits(['request-save', 'request-load']);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
@@ -77,6 +93,13 @@ async function handleRunToggle() {
 
   if (!serialStore.isRunning) {
     try {
+      // 코드를 분석해서 picozero가 필요한지 확인
+      if (codeStore.pythonCode.includes('picozero') && !serialStore.isInstalled('picozero.py')) {
+        // 알림창 띄우기
+        alert("PicoZero 라이브러리가 필요합니다. 라이브러리 매니저에서 설치해주세요!");
+        openLibManager(); // 자동으로 매니저 열어주기
+        return;
+      }
       // Pinia 스토어에 저장된 현재 블록 코드를 전송
       await serialStore.run(codeStore.pythonCode);
       logStore.addLog('system', t('msg.runSuccess'));
@@ -113,12 +136,30 @@ async function handleUpload() {
     logStore.addLog('error', t('msg.uploadError',  {error: error.message}));
   }
 }
+
+const openLibManager = async () => {
+  // 보드가 연결되어 있다면 최신 파일 목록을 즉시 동기화
+  if (serialStore.isConnected) {
+    try {
+      await serialStore.syncFileList();
+    } catch (error) {
+      console.error("파일 목록을 가져오는 중 오류 발생:", error);
+    }
+  }
+};
 </script>
 
 <template>
   <header class="navbar bg-base-300 border-b border-base-100 px-4 min-h-[60px]">
     <div class="flex-1 flex items-center gap-6">
       <a class="text-xl font-bold text-success tracking-widest">PICO EDITOR</a>
+      <div class="flex-none gap-2">
+        <div v-if="modeStore.currentModeDetail" class="tooltip tooltip-bottom" :data-tip="modeStore.currentModeDetail.name">
+          <button @click="handleModeChangeRequest" class="btn btn-ghost btn-circle">
+            <img :src="modeStore.currentModeDetail.icon" class="w-8 h-8 object-contain" />
+          </button>
+        </div>
+      </div>
       <div class="dropdown dropdown-end">
         <div tabindex="0" role="button" class="btn btn-sm btn-ghost gap-2 border border-base-100">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -140,6 +181,16 @@ async function handleUpload() {
       <button @click="onFileSave" class="btn btn-sm btn-ghost border border-base-100 gap-2">
         💾 {{ $t('navbar.save') }}
       </button>
+      <!-- <button 
+        class="btn btn-ghost btn-circle" 
+        @click="openLibManager"
+        :title="$t('navbar.lib_manager')"
+      >
+        <div class="indicator">
+          <span class="text-xl">📦</span>
+          <span v-if="hasUpdates" class="badge badge-xs badge-primary indicator-item"></span>
+        </div>
+      </button> -->
     </div>
 
     <div class="flex-none flex items-center gap-3">
@@ -182,6 +233,13 @@ async function handleUpload() {
   /* 비활성화된 버튼을 확실히 어둡게 만들기 */
   .btn-disabled, .btn[disabled] {
     color: #555 !important;
+  }
+
+  /* 툴팁 안보이는 이슈 */
+  .tooltip:before {
+    content: attr(data-tip); /* data-tip 속성값을 강제로 출력 */
+    color: white !important; /* 글자색 강제 지정 */
+    min-width: 50px;         /* 최소 너비 지정 */
   }
 
   /* 로딩 스피너 애니메이션 */

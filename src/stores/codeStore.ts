@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import { pythonGenerator } from 'blockly/python';
+import { sanitizeCode } from '@/utils/code-sanitizer';
+import { useProjectStore } from './projectStore';
 
 export const useCodeStore = defineStore('code', () => {
   // 상태
@@ -12,5 +15,18 @@ export const useCodeStore = defineStore('code', () => {
     pythonCode.value = code;
   }
 
-  return { pythonCode, isManualEditing, hasUnsavedChanges, setPythonCode };
+  const triggerCodeUpdate = () => {
+    const projectStore = useProjectStore(); // 참조 접근시 주의!! 최상위(Top-level)에서 접근하면, Circular Reference 발생!!
+    if (!projectStore.workspace) return;
+    
+    try {
+      const rawCode = pythonGenerator.workspaceToCode(projectStore.workspace);
+      pythonCode.value = sanitizeCode(rawCode);
+    } catch (err) {
+      console.error("코드 생성 오류:", err);
+      pythonCode.value = "# 코드 생성 중 오류가 발생했습니다.";
+    }
+  };
+
+  return { pythonCode, isManualEditing, hasUnsavedChanges, setPythonCode, triggerCodeUpdate };
 });

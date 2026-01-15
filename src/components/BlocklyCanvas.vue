@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import * as Blockly from 'blockly';
 import { pythonGenerator } from 'blockly/python';
 import { useCodeStore } from '../stores/codeStore';
-import { sanitizeCode } from '../utils/code-sanitizer';
+// import { sanitizeCode } from '../utils/code-sanitizer';
 import { useModeStore } from '../stores/modeStore';
 import { useProjectStore } from '../stores/projectStore';
 import { loadModeBlocks } from '../blocks/loader';
@@ -126,11 +126,6 @@ const ScratchTheme = Blockly.Theme.defineTheme(themeConfig.name, themeConfig);
 const initBlockly = async () => {
   if (!blocklyDiv.value || !modeStore.currentMode) return;
 
-  // 기존 워크스페이스가 있다면 삭제 (메모리 관리)
-  // if (workspace) {
-  //   workspace.dispose();
-  // }
-
   // 모드에 맞는 블록 및 툴박스 로드 (동적 로딩)
   const toolboxConfig = await getToolboxConfig();
 
@@ -166,20 +161,24 @@ const initBlockly = async () => {
   // 블록 변경 이벤트 감지 -> 파이썬 코드 생성
   workspace.addChangeListener((event) => {
     if (event.isUiEvent) return;
-
-    try {
-      if (codeStore.isManualEditing) {
-          console.log("텍스트 수정 중이므로 블록 업데이트를 건너뜁니다.");
-          return;
-      }
-      const rawCode = pythonGenerator.workspaceToCode(workspace!);
-      codeStore.setPythonCode(sanitizeCode(rawCode));
-    } catch (error) {
-      console.error("파이썬 코드 생성 중 오류 발생:", error);
+    if (codeStore.isManualEditing) {
+        console.log("텍스트 수정 중이므로 블록 업데이트를 건너뜁니다.");
+        return;
     }
+    onWorkspaceChange(event);
   });
 
   Blockly.svgResize(workspace);
+};
+
+// 워크스페이스 변경 감지 리스너
+const onWorkspaceChange = (event: Blockly.Events.Abstract) => {
+  // 사용자의 조작뿐만 아니라 FINISHED_LOADING(파일 로드 완료) 이벤트 때도 코드를 갱신함
+  if (event.type === Blockly.Events.BLOCK_MOVE || 
+      event.type === Blockly.Events.BLOCK_CHANGE ||
+      event.type === Blockly.Events.FINISHED_LOADING) {
+    codeStore.triggerCodeUpdate();
+  }
 };
 
 // 모드가 바뀔 때마다 블록리 재설정

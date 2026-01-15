@@ -10,7 +10,7 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
   // 헬퍼 함수: 들여쓰기가 필요한 코드 블록(Statement) 처리
   const getBranch = (block: Blockly.Block, name: string) => {
     let branch = P.statementToCode(block, name);
-    return P.addLoopTrap(branch, block.id) || P.PASS;
+    return P.addLoopTrap(branch, (block as any).id) || P.PASS;
   };
 
   // --- 1. 기초 및 라이브러리 임포트 ---
@@ -96,19 +96,19 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
 
   // --- 7. 변수 관련 (Variables) ---
   P.forBlock['variables_get'] = (block: Blockly.Block) => {
-    const varName = P.nameDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
+    const varName = P.nameDB_!.getName(block.getFieldValue('VAR'), 'VARIABLE');
     return [varName, ORDER];
   };
 
   P.forBlock['variables_set'] = (block: Blockly.Block) => {
-    const varName = P.nameDB_.getName(block.getFieldValue('VAR'), Blockly.Variables.NAME_TYPE);
+    const varName = P.nameDB_!.getName(block.getFieldValue('VAR'), 'VARIABLE');
     const val = P.valueToCode(block, 'varset', ORDER);
     return `${varName} = ${val}\n`;
   };
 
   // 인라인 변수 설정 (varinlines)
   P.forBlock['varinlines'] = (block: Blockly.Block) => {
-    const varName = P.nameDB_.getName(block.getFieldValue('var'), Blockly.Variables.NAME_TYPE);
+    const varName = P.nameDB_!.getName(block.getFieldValue('var'), 'VARIABLE');
     const op = block.getFieldValue('NAME'); // =, +=, -=
     const val = P.valueToCode(block, 'value', ORDER) || '0';
     return `${varName} ${op} ${val}\n`;

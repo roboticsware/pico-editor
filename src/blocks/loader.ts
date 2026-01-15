@@ -20,20 +20,20 @@ export async function loadModeBlocks(modeId: string | null) {
     let modules: BlockModule[] = [];
     
     // 공통 블록 모듈
-    const { basicModule } = await import(`./common/basic/index`);
+    const { basicModule } = await import(`./common/basic/index.ts`);
     modules.push(basicModule);
 
     switch (modeId) {
       case 'socopicolab':
-        const { testModule } = await import(`./${modeId}/test/index`);
+        const { testModule } = await import(`./${modeId}/test/index.ts`);
         modules.push(testModule);
         break
       case 'rauf':
-        const { ledModule } = await import(`./${modeId}/led/index`);
+        const { ledModule } = await import(`./${modeId}/led/index.ts`);
         modules.push(ledModule);
         break;
       case 'rpipico':
-        const { picoLedModule } = await import(`./${modeId}/pico_led/index`);
+        const { picoLedModule } = await import(`./${modeId}/pico_led/index.ts`);
         modules.push(picoLedModule);
         break;
       default:

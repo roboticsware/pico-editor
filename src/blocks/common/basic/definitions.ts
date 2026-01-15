@@ -253,7 +253,6 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setOutput(true, null);
       this.setColour(maincolour);
-      if (this.setOutputShape) this.setOutputShape(2);
     }
   };
 
@@ -266,7 +265,6 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setOutput(true, null);
       this.setColour(maincolour);
-      if (this.setOutputShape) this.setOutputShape(2);
     }
   };
 
@@ -279,7 +277,6 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setOutput(true, null);
       this.setColour(maincolour);
-      // this.setOutputShape(Blockly.OUTPUT_SHAPE_ROUND);
       this.setTooltip('negates a Boolean value');
       this.setHelpUrl('http://www.example.com/');
     },
@@ -290,18 +287,16 @@ export default function define(Blocks: any) {
       this.appendDummyInput().appendField(new Blockly.FieldTextInput(""), "text");
       this.setOutput(true, null);
       this.setColour(white);
-      if (this.setOutputShape) this.setOutputShape(2);
     }
   };
 
   Blocks['stringinline'] = {
     init: function() {
       this.appendDummyInput()
-        .appendField(new Blockly.FieldString(""), "text");
+        .appendField(new Blockly.FieldTextInput(""), "text");
       this.setInputsInline(true);
       this.setOutput(true, null);
       this.setColour("#FFFFFF", "#FFFFFF", "#FFFFFF");
-      this.setOutputShape(Blockly.OUTPUT_SHAPE_ROUND);
       this.setTooltip("String input for inline input");
       this.setHelpUrl("");
     }
@@ -323,7 +318,6 @@ export default function define(Blocks: any) {
       this.appendDummyInput().appendField(new Blockly.FieldVariable("var"), "VAR");
       this.setOutput(true, null);
       this.setColour(maincolour);
-      if (this.setOutputShape) this.setOutputShape(2);
     }
   };
 
@@ -348,7 +342,6 @@ export default function define(Blocks: any) {
       this.appendValueInput("value")
         .setCheck(null);
       this.setInputsInline(true);
-      // this.setOutputShape(Blockly.OUTPUT_SHAPE_ROUND);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(maincolour);
@@ -365,7 +358,6 @@ export default function define(Blocks: any) {
             ["False","False"]
         ]), "bool");
       this.setOutput(true, "Boolean");
-      // this.setOutputShape(Blockly.OUTPUT_SHAPE_ROUND);
       this.setColour(maincolour);
       this.setTooltip("");
       this.setHelpUrl("");
@@ -394,7 +386,6 @@ export default function define(Blocks: any) {
       this.appendValueInput("value")
         .setCheck(null);
       this.setInputsInline(true);
-      // this.setOutputShape(Blockly.OUTPUT_SHAPE_ROUND);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(maincolour);

@@ -10,7 +10,7 @@ defineExpose({ pythonViewerRef });
 </script>
 
 <template>
-  <splitpanes horizontal>
+  <splitpanes horizontal class="default-theme">
     <pane min-size="20" size="70">
       <PythonCodeViewer ref="pythonViewerRef" />
     </pane>
@@ -22,4 +22,16 @@ defineExpose({ pythonViewerRef });
 </template>
 
 <style scoped>
+/* Pane 내부의 컴포넌트가 높이 100%를 차지하도록 보장 */
+:deep(.splitpanes) {
+  height: 100%;
+  width: 100%;
+}
+
+:deep(.splitpanes__pane) {
+  height: 100%;
+  display: flex; 
+  flex-direction: column;
+  overflow: hidden; /* 내부 컴포넌트(CodeMirror)가 자체 스크롤을 가지므로 Pane은 넘침 숨김 */
+}
 </style>

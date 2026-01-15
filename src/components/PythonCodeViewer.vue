@@ -6,7 +6,6 @@ import { python } from "@codemirror/lang-python";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 import { useI18n } from 'vue-i18n';
 import { 
   IonToolbar, IonButtons, IonButton, IonIcon, IonBadge 
@@ -17,6 +16,34 @@ const { t } = useI18n();
 const codeStore = useCodeStore();
 const editorContainer = ref<HTMLElement | null>(null);
 let view: EditorView | null = null;
+
+// Shadow DOM 내부에서 사용할 테마 설정
+// 외부 간섭이 없으므로 !important 없이도 적용되지만, CodeMirror 기본값 오버라이딩을 위해 명시
+const shadowTheme = EditorView.theme({
+  "&": {
+    height: "100%",
+    fontSize: "14px"
+  },
+  ".cm-scroller": {
+    fontFamily: "monospace", /* 시스템 모노스페이스 폰트 사용 */
+    fontWeight: "bold",
+    lineHeight: "1.5",
+    overflow: "auto"
+  },
+  ".cm-content": {
+    whiteSpace: "pre",
+    padding: "4px 0",
+    minHeight: "100%"
+  },
+  ".cm-gutters": {
+    backgroundColor: "#282c34",
+    borderRight: "1px solid #3e4451",
+    color: "#4b5263"
+  },
+  ".cm-activeLine": {
+    backgroundColor: "rgba(255, 255, 255, 0.07)"
+  }
+});
 
 // 외부에서 이 컴포넌트의 에디터에 포커스를 줄 수 있게 함수 노출
 const focusTextEditor = () => {
@@ -33,15 +60,60 @@ let isUpdatingFromStore = false;
 
 onMounted(() => {
   if (editorContainer.value) {
+    // [Shadow DOM Strategy]
+    // Ionic 스타일 격리를 위해 Shadow DOM 생성
+    // 1. 이미 shadowRoot가 있는지 확인 (HMR 대응)
+    let shadow = editorContainer.value.shadowRoot;
+    if (!shadow) {
+       shadow = editorContainer.value.attachShadow({ mode: 'open' });
+    }
+
+    // 2. Host 스타일 정의 (Shadow DOM 컨테이너 자체의 스타일)
+    const hostStyle = document.createElement('style');
+    hostStyle.textContent = `
+      :host {
+        display: block;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+        text-align: left;
+        background-color: #282c34;
+        position: relative;
+      }
+      /* CodeMirror Editor가 Host를 가득 채우도록 */
+      .cm-editor {
+        height: 100%;
+      }
+      /* 커서 스타일 (깜빡이는 선) */
+      .cm-editor .cm-cursor {
+        border-left: 3px solid #ffcc00 !important; /* 금색 커서 */
+        margin-left: -1.5px; /* 두꺼워진 만큼 정렬 조정 */
+      }
+      /* 선택 영역(드래그) 색상 */
+      .cm-selectionBackground {
+        background-color: rgba(100, 150, 255, 0.3) !important;
+      }
+      /* 현재 활성화된 줄의 줄번호 창(Gutter) 배경색 */
+      .cm-editor.cm-focused .cm-activeLineGutter {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        color: #ffffff !important;
+        font-weight: bold;
+      }
+    `;
+    // 기존 스타일 제거 후 추가 (중복 방지)
+    shadow.innerHTML = ''; 
+    shadow.appendChild(hostStyle);
+
+    // 3. EditorView 생성 (Shadow Root 내부에 마운트)
     view = new EditorView({
       doc: codeStore.pythonCode,
       extensions: [
-        basicSetup,
-        python(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        oneDark,
-        // 탭 키를 눌렀을 때 빈칸 4개(들여쓰기)가 작동하도록 설정
-        keymap.of([indentWithTab]),
+        shadowTheme,
+        basicSetup, 
+        python(),   
+        oneDark,    
+        // 탭 키를 눌렀을 때 빈칸(들여쓰기)가 작동하도록 설정
+        keymap.of([indentWithTab]), 
         // 사용자 타이핑 감지 시 즉시 스토어에 자동 저장 (실시간 동기화)
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isUpdatingFromStore) {
@@ -52,7 +124,8 @@ onMounted(() => {
           }
         }),
       ],
-      parent: editorContainer.value,
+      root: shadow,   // 중요: 이벤트를 Shadow DOM 기준으로 처리
+      parent: shadow, // 중요: 마운트 위치
     });
   }
 });
@@ -69,34 +142,17 @@ const saveToFile = () => {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
-
   codeStore.isManualEditing = false;
   codeStore.hasUnsavedChanges = true;
 };
-
-// 에디터 -> 스토어 감시 (Logic embedded in onMounted extension for direct handling, 
-// duplicate logic from original code cleaned up below if present in original, 
-// wait, original had a redundant EditorView.updateListener outside onMounted? 
-// No, looking at file content lines 72-84: It SEEMS redundant or separated.
-// Line 38 and Line 72 both add updateListeners? 
-// Actually line 48 creates the view. Line 72 calls `EditorView.updateListener.of` but does not attach it to `view`?
-// Ah, `EditorView.updateListener.of(...)` returns an Extension. If it's not passed to `extensions` or `view.dispatch({effects: ...})`, it does nothing.
-// The original code lines 72-84 were effectively dead code or I misread how they attached.
-// Wait, `extensions: [ ... ]` included logic.
-// The block at 72 seemed to be loose code. "EditorView.updateListener.of" returns an extension object. It doesn't magically attach.
-// So the original code might have had a bug or I am missing something.
-// However, I will preserve the logic inside `onMounted`'s `extensions`.
 
 // 스토어 변경시, 에디터 동기화 (블록 조작 시)
 watch(() => codeStore.pythonCode, (newCode) => {
   // 사용자가 에디터를 수정 중(ManualEditing)이거나 이미 업데이트 중이면 무시
   if (isUpdatingFromStore || codeStore.isManualEditing) return;
-
   if (view && view.state.doc.toString() !== newCode) {
     isUpdatingFromStore = true;
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: newCode }
-    });
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: newCode } });
     nextTick(() => { isUpdatingFromStore = false; });
   }
 });
@@ -104,7 +160,7 @@ watch(() => codeStore.pythonCode, (newCode) => {
 
 <template>
   <div class="code-viewer-container">
-    <ion-toolbar color="dark" style="--min-height: 48px; --padding-start: 8px; --padding-end: 8px;">
+    <ion-toolbar color="light" style="--min-height: 48px; --padding-start: 8px; --padding-end: 8px;">
        <ion-buttons slot="start">
           <ion-icon :icon="codeSlash" style="margin-right: 8px; font-size: 1.2em;"></ion-icon>
           <span style="font-weight: bold; font-size: 0.9em;">PYTHON CODE</span>
@@ -115,6 +171,7 @@ watch(() => codeStore.pythonCode, (newCode) => {
        </ion-buttons>
     </ion-toolbar>
 
+    <!-- Shadow Host -->
     <div ref="editorContainer" class="editor-area"></div>
   </div>
 </template>
@@ -124,67 +181,14 @@ watch(() => codeStore.pythonCode, (newCode) => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--ion-background-color, #fff); /* Fallback */
+  background-color: var(--ion-background-color, #fff); 
   position: relative;
 }
 
 .editor-area {
   flex: 1;
-  overflow: hidden;
-}
-
-/* CodeMirror가 컨테이너 높이를 꽉 채우도록 설정 */
-:deep(.cm-editor) {
-  height: 100%;
-  text-align: left; /* Ionic text-align 상속 방지 */
-  background-color: #282c34; /* OneDark 배경색 매칭 */
-}
-
-/* Scroller가 flex item으로서 제대로 동작하도록 설정 */
-:deep(.cm-scroller) {
-  overflow: auto;
-  display: flex !important; /* Gutter와 Content 가로 배치 강제 */
-  align-items: flex-start;
-}
-
-/* Content 영역 스타일 */
-:deep(.cm-content) {
-  font-family: 'Fira Code', monospace;
-  font-size: 14px;
-  white-space: pre; /* 줄바꿈 방지 */
-  flex-grow: 1; /* 남은 공간 차지 */
-  flex-shrink: 0;
-}
-
-/* 커서 스타일 (깜빡이는 선) */
-:deep(.cm-editor .cm-cursor) {
-  border-left: 3px solid #ffcc00 !important; /* 금색 커서 */
-  margin-left: -1.5px;
-}
-
-/* 현재 활성화된 줄(포커스 되었을 때) 배경색 */
-:deep(.cm-editor.cm-focused .cm-activeLine) {
-  background-color: rgba(255, 255, 255, 0.07) !important;
-}
-
-/* 현재 활성화된 줄의 줄번호 창(Gutter) 배경색 */
-:deep(.cm-editor.cm-focused .cm-activeLineGutter) {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff !important;
-  font-weight: bold;
-}
-
-/* 줄번호 창 전체 스타일 */
-:deep(.cm-gutters) {
-  background-color: #282c34 !important;
-  border-right: 1px solid #3e4451 !important;
-  color: #4b5263 !important;
-  white-space: nowrap; /* 줄번호 줄바꿈 방지 */
-  flex-shrink: 0; /* 줄어들지 않도록 */
-}
-
-/* 선택 영역(드래그) 색상 */
-:deep(.cm-selectionBackground) {
-  background-color: rgba(100, 150, 255, 0.3) !important;
+  /* overflow: hidden; -> Shadow DOM Host Style (:host)에서 처리하므로 여기선 굳이 필요 없지만 레이아웃 잡기용 */
+  overflow: hidden; 
+  position: relative;
 }
 </style>

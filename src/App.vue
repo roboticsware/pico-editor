@@ -1,17 +1,15 @@
 <template>
-  <div id="main-container">
-    <router-view />
-  </div>
+  <ion-app>
+    <ion-router-outlet />
+  </ion-app>
 </template>
 
+<script setup lang="ts">
+import { IonApp, IonRouterOutlet } from '@ionic/vue';
+</script>
+
 <style>
-/* Use full screen */
-#main-container {
-  width: 100vw;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+/* IonApp takes 100% width/height by default */
 
 /* Blockly의 Flyout(블록선택창)의 스크롤바(?) 잔상이 생기는 이슈 수정 */
 /* Flyout 스크롤바 트랙(배경)을 완전히 투명하게 */

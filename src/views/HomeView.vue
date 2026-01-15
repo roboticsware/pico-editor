@@ -3,7 +3,6 @@ import { IonPage, IonHeader, IonContent } from '@ionic/vue';
 import NavBar from '../components/NavBar.vue';
 import BlocklyEditor from '../components/BlocklyEditor.vue';
 import ModeSelectModal from '../components/ModeSelectModal.vue';
-import ConfirmModal from '../components/ConfirmModal.vue';
 import { useProjectStore } from '../stores/projectStore';
 import { useModeStore } from '../stores/modeStore';
 
@@ -34,7 +33,6 @@ const handleLoad = (file: File) => {
         <BlocklyEditor v-if="modeStore.currentMode"/>
       </main>
       <ModeSelectModal />
-      <ConfirmModal />
     </ion-content>
   </ion-page>
 </template>

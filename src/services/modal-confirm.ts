@@ -1,31 +1,28 @@
-import { ref } from 'vue';
-
-interface ConfirmOptions {
-  title: string;
-  message: string;
-}
-
-// 모달의 상태를 외부에서 제어할 수 있도록 내보냄
-export const isConfirmOpen = ref(false);
-export const confirmOptions = ref<ConfirmOptions>({ title: '', message: '' });
-
-let resolveCallback: (value: boolean) => void;
+import { alertController } from '@ionic/vue';
 
 /**
- * 전역에서 사용할 수 있는 함수형 컨펌 창
- * @example const ok = await confirmCustom('주의', '삭제하시겠습니까?');
+ * Global functional confirm dialog using Ionic Alert
+ * @example const ok = await confirmCustom('Warning', 'Delete this?');
  */
-export const confirmCustom = (title: string, message: string): Promise<boolean> => {
-  confirmOptions.value = { title, message };
-  isConfirmOpen.value = true;
-
-  return new Promise((resolve) => {
-    resolveCallback = resolve;
+export const confirmCustom = async (title: string, message: string): Promise<boolean> => {
+  return new Promise(async (resolve) => {
+    const alert = await alertController.create({
+      header: title,
+      message: message,
+      backdropDismiss: false,
+      buttons: [
+        {
+          text: 'Cancel', // Or '취소' if I18n is preferred, but simple string here for now
+          role: 'cancel',
+          handler: () => resolve(false)
+        },
+        {
+          text: 'OK', // Or '확인'
+          role: 'confirm',
+          handler: () => resolve(true)
+        }
+      ]
+    });
+    await alert.present();
   });
-};
-
-// 모달에서 버튼 클릭 시 호출할 함수
-export const handleConfirmResponse = (response: boolean) => {
-  isConfirmOpen.value = false;
-  resolveCallback(response);
 };

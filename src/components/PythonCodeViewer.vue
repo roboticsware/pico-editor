@@ -4,10 +4,13 @@ import { useCodeStore } from '../stores/codeStore';
 import { EditorView, basicSetup } from "codemirror";
 import { python } from "@codemirror/lang-python";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { CodeIcon } from 'lucide-vue-next';
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { useI18n } from 'vue-i18n';
+import { 
+  IonToolbar, IonButtons, IonButton, IonIcon, IonBadge 
+} from '@ionic/vue';
+import { codeSlash } from 'ionicons/icons';
 
 const { t } = useI18n();
 const codeStore = useCodeStore();
@@ -23,6 +26,9 @@ const focusTextEditor = () => {
   }
 };
 defineExpose({ focusTextEditor });
+
+// 스토어 업데이트 중인지 확인하는 플래그 (무한 루프 방지)
+let isUpdatingFromStore = false;
 
 onMounted(() => {
   if (editorContainer.value) {
@@ -66,22 +72,18 @@ const saveToFile = () => {
   codeStore.hasUnsavedChanges = true;
 };
 
-// 스토어 업데이트 중인지 확인하는 플래그 (무한 루프 방지)
-let isUpdatingFromStore = false;
-// 에디터 -> 스토어 감시
-EditorView.updateListener.of((update) => {
-  if (update.docChanged && !isUpdatingFromStore) {
-    const currentCode = update.state.doc.toString();
-    
-    // [중요] 스토어를 업데이트하기 전에 플래그를 세우지 않으면 
-    // watch가 반응하면서 커서를 초기화할 수 있습니다.
-    isUpdatingFromStore = true; 
-    codeStore.setPythonCode(currentCode);
-    
-    // 다음 틱에서 플래그 해제
-    setTimeout(() => { isUpdatingFromStore = false; }, 0);
-  }
-}),
+// 에디터 -> 스토어 감시 (Logic embedded in onMounted extension for direct handling, 
+// duplicate logic from original code cleaned up below if present in original, 
+// wait, original had a redundant EditorView.updateListener outside onMounted? 
+// No, looking at file content lines 72-84: It SEEMS redundant or separated.
+// Line 38 and Line 72 both add updateListeners? 
+// Actually line 48 creates the view. Line 72 calls `EditorView.updateListener.of` but does not attach it to `view`?
+// Ah, `EditorView.updateListener.of(...)` returns an Extension. If it's not passed to `extensions` or `view.dispatch({effects: ...})`, it does nothing.
+// The original code lines 72-84 were effectively dead code or I misread how they attached.
+// Wait, `extensions: [ ... ]` included logic.
+// The block at 72 seemed to be loose code. "EditorView.updateListener.of" returns an extension object. It doesn't magically attach.
+// So the original code might have had a bug or I am missing something.
+// However, I will preserve the logic inside `onMounted`'s `extensions`.
 
 // 스토어 변경시, 에디터 동기화 (블록 조작 시)
 watch(() => codeStore.pythonCode, (newCode) => {
@@ -99,24 +101,36 @@ watch(() => codeStore.pythonCode, (newCode) => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-base-100 text-xs font-bold relative">
-    <div class="flex justify-between items-center px-4 py-2 bg-neutral text-neutral-content shrink-0">
-      <div class="flex items-center gap-2">
-        <span class="flex items-center gap-2">
-        <CodeIcon :size="14" />PYTHON CODE
-      </span>
-        <div v-if="codeStore.isManualEditing" class="badge badge-warning badge-sm animate-pulse">{{ $t('editor.modified') }}</div>
-      </div>
-      <div class="flex gap-2">
-        <button @click="saveToFile()" class="btn btn-xs btn-primary">{{ $t('editor.saveToFile') }}</button>
-      </div>
-    </div>
+  <div class="code-viewer-container">
+    <ion-toolbar color="dark" style="--min-height: 48px; --padding-start: 8px; --padding-end: 8px;">
+       <ion-buttons slot="start">
+          <ion-icon :icon="codeSlash" style="margin-right: 8px; font-size: 1.2em;"></ion-icon>
+          <span style="font-weight: bold; font-size: 0.9em;">PYTHON CODE</span>
+          <ion-badge v-if="codeStore.isManualEditing" color="warning" style="margin-left: 10px">{{ $t('editor.modified') }}</ion-badge>
+       </ion-buttons>
+       <ion-buttons slot="end">
+          <ion-button size="small" fill="solid" @click="saveToFile()">{{ $t('editor.saveToFile') }}</ion-button>
+       </ion-buttons>
+    </ion-toolbar>
 
-    <div ref="editorContainer" class="flex-1 overflow-hidden text-base"></div>
+    <div ref="editorContainer" class="editor-area"></div>
   </div>
 </template>
 
 <style scoped>
+.code-viewer-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--ion-background-color, #fff); /* Fallback */
+  position: relative;
+}
+
+.editor-area {
+  flex: 1;
+  overflow: hidden;
+}
+
 /* CodeMirror가 컨테이너 높이를 꽉 채우도록 설정 */
 :deep(.cm-editor) {
   height: 100%;

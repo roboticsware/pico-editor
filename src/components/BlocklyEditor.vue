@@ -3,11 +3,14 @@ import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 import BlocklyCanvas from './BlocklyCanvas.vue'
 import RightPanel from './RightPanel.vue'
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useCodeStore } from '@/stores/codeStore';
+import { IonAlert } from '@ionic/vue';
+import { useI18n } from 'vue-i18n';
 
-// 사용자가 구역 크기를 조절할 때마다 자식의 resize 메서드 호출
+const { t } = useI18n();
 const canvasRef = ref<InstanceType<typeof BlocklyCanvas> | null>(null);
+
 const onPaneResize = () => {
   if (canvasRef.value) {
     canvasRef.value.handleResize();
@@ -17,23 +20,29 @@ const onPaneResize = () => {
 // 코드저장필요 경고모달 관련
 const showModal = ref(false);
 const rightPanelRef = ref<InstanceType<typeof RightPanel> | null>(null);
-const handleCancel = () => {
-  showModal.value = false;
-  
-  // 텍스트 코딩창으로 포커스 되돌리기
-  // RightPanel -> PythonCodeViewer 구조라면 순차적으로 접근합니다.
-  if (rightPanelRef.value?.pythonViewerRef) {
-    rightPanelRef.value.pythonViewerRef.focusTextEditor();
-  }
-};
+const codeStore = useCodeStore();
 
-const codeStore = useCodeStore()
-const handleConfirm = () => {
-  // 블록코딩에 의한 자동 코드 업데이트의 잠금 해제
-  codeStore.hasUnsavedChanges = false;
-  codeStore.isManualEditing = false;
-  showModal.value = false;
-};
+const alertButtons = computed(() => [
+  {
+    text: t('editor.modal.cancel'),
+    role: 'cancel',
+    handler: () => {
+      showModal.value = false;
+      if (rightPanelRef.value?.pythonViewerRef) {
+        rightPanelRef.value.pythonViewerRef.focusTextEditor();
+      }
+    }
+  },
+  {
+    text: t('editor.modal.confirm'),
+    role: 'confirm',
+    handler: () => {
+      codeStore.hasUnsavedChanges = false;
+      codeStore.isManualEditing = false;
+      showModal.value = false;
+    }
+  }
+]);
 </script>
 
 <template>
@@ -47,28 +56,20 @@ const handleConfirm = () => {
         <RightPanel ref="rightPanelRef"/>
       </pane>
     </splitpanes>
-    <div v-if="showModal" class="modal modal-open">
-    <div class="modal-box border-2 border-primary bg-base-100 shadow-2xl">
-      <h3 class="font-bold text-lg flex items-center gap-2 text-primary">
-        <span class="text-warning">⚠️</span> {{ $t('editor.modal.title') }}
-      </h3>
-      <p v-html="$t('editor.modal.description')"></p>
-      <div class="modal-action">
-        <button @click="handleConfirm" class="btn btn-ghost">
-          {{ $t('editor.modal.confirm') }}
-        </button>
-        <button @click="handleCancel" class="btn btn-primary">
-          {{ $t('editor.modal.cancel') }}
-        </button>
-      </div>
-    </div>
-    </div>
+    
+    <ion-alert
+      :is-open="showModal"
+      :header="t('editor.modal.title')"
+      :message="t('editor.modal.description')"
+      :buttons="alertButtons"
+      @didDismiss="showModal = false"
+    ></ion-alert>
   </div>
 </template>
 
 <style scoped>
   .editor-main-container {
-    height: calc(100vh - 60px); /* NavBar 높이 60px 제외한 나머지를 꽉 채우도록 강제 */
+    height: 100%;
     width: 100%;
   } 
 

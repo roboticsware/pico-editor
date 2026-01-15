@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from 'vue';
-import { useLogStore } from '../stores/logStore.ts';
+import { useLogStore } from '../stores/logStore';
 import i18n from '@/i18n';
-import { TerminalIcon } from 'lucide-vue-next';
+import { IonToolbar, IonButtons, IonIcon } from '@ionic/vue';
+import { terminal } from 'ionicons/icons';
 
 const logStore = useLogStore();
 const scrollBox = ref<HTMLElement | null>(null);
@@ -21,11 +22,13 @@ onMounted(() => {
 
 <template>
   <div class="terminal-wrapper">
-    <div class="p-2 bg-base-100 text-xs font-bold flex justify-between items-center">
-      <span class="flex items-center gap-2">
-        <TerminalIcon :size="14" />TERMINAL LOG
-      </span>
-    </div>
+    <ion-toolbar color="dark" style="--min-height: 36px; border-bottom: 1px solid #333;">
+        <ion-buttons slot="start" style="min-height: 36px;">
+            <ion-icon :icon="terminal" style="margin-left:8px; margin-right:8px; font-size: 14px;"></ion-icon>
+            <span style="font-weight: bold; font-size: 12px;">TERMINAL LOG</span>
+        </ion-buttons>
+    </ion-toolbar>
+
     <div class="log-container" ref="scrollBox">
       <div v-for="(log, i) in logStore.logs" :key="i" :class="['log-row', log.type]">
         <span class="time">[{{ log.time }}]</span>

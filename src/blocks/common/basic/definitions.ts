@@ -15,7 +15,7 @@ export default function define(Blocks: any) {
 
   simpleBlocks.forEach(b => {
     Blocks[b.id] = {
-      init: function() {
+      init: function () {
         this.appendDummyInput().appendField(b.text);
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
@@ -41,7 +41,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['whileout'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField('while');
       this.appendValueInput("cond").setCheck("Boolean");
       this.appendDummyInput().appendField(':');
@@ -53,7 +53,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['ifinline'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField('if');
       this.appendValueInput("iftext").setCheck("Boolean");
       this.appendDummyInput().appendField(':');
@@ -66,7 +66,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['elifinline'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField('elif');
       this.appendValueInput('iftext').setCheck(null);
       this.appendDummyInput().appendField(':');
@@ -79,7 +79,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['else'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField('else:');
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
@@ -122,7 +122,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['for'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField('for');
       this.appendValueInput('letter').setCheck(null);
       this.appendDummyInput().appendField('in range(');
@@ -159,7 +159,7 @@ export default function define(Blocks: any) {
 
   // --- 3. 함수 및 클래스 ---
   Blocks['define'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField('def ');
       this.appendValueInput('1').setCheck(null); // 함수명
       this.appendDummyInput().appendField('(');
@@ -173,7 +173,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['return2'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField('return');
       this.appendValueInput('return').setCheck(null);
       this.setInputsInline(true);
@@ -225,11 +225,11 @@ export default function define(Blocks: any) {
       this.appendDummyInput()
         .appendField('with');
       this.appendValueInput("iftext")
-        .setCheck("null");
+        .setCheck(null);
       this.appendDummyInput()
         .appendField('as');
       this.appendValueInput("iftext2")
-        .setCheck("null");
+        .setCheck(null);
       this.appendDummyInput()
         .appendField(':');
       this.appendStatementInput('ifstate')
@@ -245,7 +245,7 @@ export default function define(Blocks: any) {
 
   // --- 4. 연산 및 인라인 블록 (중요!) ---
   Blocks['internal'] = {
-    init: function() {
+    init: function () {
       const OPS = [['==', '=='], ['!=', '!='], ['<', '<'], ['<=', '<='], ['>', '>'], ['>=', '>=']] as const;
       this.appendValueInput("first").setCheck(null);
       this.appendDummyInput().appendField(new Blockly.FieldDropdown(OPS as any), "choose");
@@ -257,7 +257,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['andor'] = {
-    init: function() {
+    init: function () {
       const OPS = [["and", "and"], ["or", "or"]] as const;
       this.appendValueInput("first").setCheck(null);
       this.appendDummyInput().appendField(new Blockly.FieldDropdown(OPS as any), "choose");
@@ -283,7 +283,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['textinline'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField(new Blockly.FieldTextInput(""), "text");
       this.setOutput(true, null);
       this.setColour(white);
@@ -291,7 +291,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['stringinline'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput()
         .appendField(new Blockly.FieldTextInput(""), "text");
       this.setInputsInline(true);
@@ -303,7 +303,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['typeanything'] = {
-    init: function() {
+    init: function () {
       this.appendValueInput("stuff").setCheck(null);
       this.appendDummyInput().appendField("# your own code");
       this.setPreviousStatement(true, null);
@@ -314,7 +314,7 @@ export default function define(Blocks: any) {
 
   // --- 5. 변수 관련 ---
   Blocks['variables_get'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField(new Blockly.FieldVariable("var"), "VAR");
       this.setOutput(true, null);
       this.setColour(maincolour);
@@ -322,10 +322,10 @@ export default function define(Blocks: any) {
   };
 
   Blocks['variables_set'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput()
-          .appendField(new Blockly.FieldVariable("var"), "VAR")
-          .appendField(" = ");
+        .appendField(new Blockly.FieldVariable("var"), "VAR")
+        .appendField(" = ");
       this.appendValueInput("varset").setCheck(null);
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
@@ -335,7 +335,7 @@ export default function define(Blocks: any) {
   };
 
   Blocks['varinlines'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput()
         .appendField(new Blockly.FieldVariable("variable"), "var")
         .appendField(new Blockly.FieldDropdown([['=', '='], ['+=', '+='], ["-=", "-="]]), 'NAME')
@@ -351,11 +351,11 @@ export default function define(Blocks: any) {
   };
 
   Blocks['boolstatus'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput()
         .appendField(new Blockly.FieldDropdown([
-            ["True","True"], 
-            ["False","False"]
+          ["True", "True"],
+          ["False", "False"]
         ]), "bool");
       this.setOutput(true, "Boolean");
       this.setColour(maincolour);
@@ -378,25 +378,9 @@ export default function define(Blocks: any) {
     },
   };
 
-  Blocks['varinlines'] = {
-    init: function() {
-      this.appendDummyInput()
-        .appendField(new Blockly.FieldVariable("variable"), "var")
-        .appendField(new Blockly.FieldDropdown([['=', '='], ['+=', '+='], ["-=", "-="]]), 'NAME')
-      this.appendValueInput("value")
-        .setCheck(null);
-      this.setInputsInline(true);
-      this.setPreviousStatement(true, null);
-      this.setNextStatement(true, null);
-      this.setColour(maincolour);
-      this.setTooltip("assign a value, increment, or decrement a variable");
-      this.setHelpUrl("");
-    }
-  };
-
   // --- 6. 기타 필수 블록 ---
   Blocks['varprint'] = {
-    init: function() {
+    init: function () {
       this.appendDummyInput().appendField('print(');
       this.appendValueInput('var').setCheck(null);
       this.appendDummyInput().appendField(')');

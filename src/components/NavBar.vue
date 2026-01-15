@@ -179,9 +179,9 @@ const openLibManager = async () => {
       </ion-button>
     </ion-buttons>
 
-    <ion-buttons slot="end">
-      <!-- File Actions -->
-      <input type="file" ref="fileInputRef" @change="onFileSelect" accept=".json" hidden />
+    <!-- Center Group: File Actions -->
+    <ion-buttons class="center-group">
+      <input type="file" ref="fileInputRef" @change="onFileSelect" accept=".json" style="display: none;" />
       
       <ion-button @click="triggerFileInput">
         <ion-icon slot="start" :icon="folderOpen"></ion-icon>
@@ -192,7 +192,9 @@ const openLibManager = async () => {
         <ion-icon slot="start" :icon="save"></ion-icon>
         <span class="ion-hide-sm-down">{{ $t('navbar.save') }}</span>
       </ion-button>
+    </ion-buttons>
 
+    <ion-buttons slot="end">
       <!-- Hardware Actions -->
       <ion-button 
         @click="handleConnectionToggle" 
@@ -225,5 +227,10 @@ const openLibManager = async () => {
 </template>
 
 <style scoped>
-/* Scoped styles if needed, mostly handled by Ionic */
+.center-group {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
 </style>

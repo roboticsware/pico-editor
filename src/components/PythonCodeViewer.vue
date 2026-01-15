@@ -6,6 +6,7 @@ import { python } from "@codemirror/lang-python";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
+import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 import { useI18n } from 'vue-i18n';
 import { 
   IonToolbar, IonButtons, IonButton, IonIcon, IonBadge 
@@ -37,6 +38,7 @@ onMounted(() => {
       extensions: [
         basicSetup,
         python(),
+        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         oneDark,
         // 탭 키를 눌렀을 때 빈칸 4개(들여쓰기)가 작동하도록 설정
         keymap.of([indentWithTab]),
@@ -134,16 +136,30 @@ watch(() => codeStore.pythonCode, (newCode) => {
 /* CodeMirror가 컨테이너 높이를 꽉 채우도록 설정 */
 :deep(.cm-editor) {
   height: 100%;
+  text-align: left; /* Ionic text-align 상속 방지 */
+  background-color: #282c34; /* OneDark 배경색 매칭 */
 }
-/* 에디터 폰트 사이즈 조정 */
+
+/* Scroller가 flex item으로서 제대로 동작하도록 설정 */
+:deep(.cm-scroller) {
+  overflow: auto;
+  display: flex !important; /* Gutter와 Content 가로 배치 강제 */
+  align-items: flex-start;
+}
+
+/* Content 영역 스타일 */
 :deep(.cm-content) {
   font-family: 'Fira Code', monospace;
   font-size: 14px;
+  white-space: pre; /* 줄바꿈 방지 */
+  flex-grow: 1; /* 남은 공간 차지 */
+  flex-shrink: 0;
 }
+
 /* 커서 스타일 (깜빡이는 선) */
 :deep(.cm-editor .cm-cursor) {
   border-left: 3px solid #ffcc00 !important; /* 금색 커서 */
-  margin-left: -1.5px; /* 두꺼워진 만큼 정렬 조정 */
+  margin-left: -1.5px;
 }
 
 /* 현재 활성화된 줄(포커스 되었을 때) 배경색 */
@@ -163,6 +179,8 @@ watch(() => codeStore.pythonCode, (newCode) => {
   background-color: #282c34 !important;
   border-right: 1px solid #3e4451 !important;
   color: #4b5263 !important;
+  white-space: nowrap; /* 줄번호 줄바꿈 방지 */
+  flex-shrink: 0; /* 줄어들지 않도록 */
 }
 
 /* 선택 영역(드래그) 색상 */

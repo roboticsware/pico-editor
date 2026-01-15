@@ -169,11 +169,13 @@ const initBlockly = async () => {
   });
 
   Blockly.svgResize(workspace);
+  // 초기화 직후 코드 스토어 동기화 (빈 코드 또는 기본 코드 반영)
+  codeStore.triggerCodeUpdate();
 };
 
 // 워크스페이스 변경 감지 리스너
 const onWorkspaceChange = (event: Blockly.Events.Abstract) => {
-  // 사용자의 조작뿐만 아니라 FINISHED_LOADING(파일 로드 완료) 이벤트 때도 코드를 갱신함
+  // 사용자가 조작뿐만 아니라 FINISHED_LOADING(파일 로드 완료) 이벤트 때도 코드를 갱신함
   if (event.type === Blockly.Events.BLOCK_MOVE || 
       event.type === Blockly.Events.BLOCK_CHANGE ||
       event.type === Blockly.Events.FINISHED_LOADING) {
@@ -184,7 +186,12 @@ const onWorkspaceChange = (event: Blockly.Events.Abstract) => {
 // 모드가 바뀔 때마다 블록리 재설정
 watch(() => modeStore.currentMode, async (newMode) => {
   if (newMode) {
-    workspace.clear(); // 모드 변경 시 워크스페이스를 비우기
+    if (workspace) {
+       workspace.dispose(); // 기존 인스턴스 파괴하여 DOM 중복 방지
+    }
+    // blocklyDiv 내부 비우기 (dispose가 일부 DOM을 남길 수 있는 경우 대비)
+    if (blocklyDiv.value) blocklyDiv.value.innerHTML = '';
+    
     await initBlockly();
   }
 });
@@ -232,7 +239,7 @@ onMounted(async () => {
  
   // Blockly 워크스페이스 생성
   applyLocaleToBlockly(langStore.currentLang); // 워크스페이스 생성 전, 현재 저장된 언어로 locale 먼저 초기화
-  initBlockly();
+  await initBlockly();
 
   // splitpanes 처음 나타날 때 빈 공간 생기는 현상을 방지용
   await nextTick();
@@ -250,28 +257,36 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative w-full h-full">
-    <div ref="blocklyDiv" class="w-full h-full"></div>
+  <div class="canvas-wrapper">
+    <div ref="blocklyDiv" class="blockly-host"></div>
     
     <div 
       v-if="codeStore.hasUnsavedChanges" 
       @mousedown.stop="checkManualEdit"
-      class="absolute inset-0 z-[50] cursor-pointer"
+      class="overlay-mask"
       title="수정된 코드를 먼저 처리해주세요"
     ></div>
   </div>
 </template>
 
 <style scoped>
-  .blockly-container {
-    height: 100%;
+  .canvas-wrapper {
     width: 100%;
-    position: relative; /* 자식인 blockly-div의 기준점이 됨 */
-    overflow: hidden;   /* 블록이 영역 밖으로 나가는 것 방지 */
+    height: 100%;
+    position: relative;
+    overflow: hidden;
   }
-  .blockly-div {
-    position: absolute; /* container 내부를 꽉 채움 */
+  .blockly-host {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+  }
+  .overlay-mask {
+    position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 50;
+    cursor: pointer;
   }
   
   /* 사이드바 카테고리 스타일 정의 */

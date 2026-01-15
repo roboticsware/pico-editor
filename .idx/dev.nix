@@ -18,7 +18,7 @@
       previews = {
         web = {
           # 아이오닉 서버를 실행하고, 호스트와 포트를 IDX 환경에 맞게 바인딩합니다.
-          command = ["ionic" "serve" "--port" "$PORT" "--host" "0.0.0.0" "----disable-host-check"];
+          command = ["ionic" "serve" "--port" "$PORT" "--host" "0.0.0.0" "--no-open"];
           manager = "web";
         };
       };

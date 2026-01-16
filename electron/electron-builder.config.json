@@ -1,0 +1,42 @@
+{
+  "appId": "com.roboticsware.picoeditor",
+  "productName": "Pico Editor",
+  "directories": {
+    "buildResources": "resources"
+  },
+  "files": [
+    "assets/**/*",
+    "build/**/*",
+    "capacitor.config.*",
+    "app/**/*"
+  ],
+  "nsis": {
+    "allowElevation": true,
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "assets/appIcon.ico"
+  },
+  "mac": {
+    "category": "public.app-category.education",
+    "target": [
+      "dmg"
+    ]
+  },
+  "linux": {
+    "target": [
+      "AppImage",
+      "deb"
+    ],
+    "category": "Education"
+  }
+}

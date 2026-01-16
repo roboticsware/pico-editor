@@ -31,3 +31,37 @@ npm run dev
 ```sh
 npm run build
 ```
+
+## Desktop Build (Electron)
+
+This project supports multi-platform desktop versions using Electron and Capacitor.
+
+### Build and Run Desktop App
+
+```sh
+# Build the web app and sync with electron
+npm run electron:build
+
+# Open the desktop app
+npm run electron:open
+```
+
+### Create Desktop Installers
+
+You can create installers for different platforms using the following commands:
+
+#### macOS (DMG)
+```sh
+npm run electron:make:mac
+```
+
+#### Windows (NSIS xe64)
+```sh
+npm run electron:make:win
+```
+
+#### Linux (AppImage, deb)
+```sh
+npm run electron:make:linux
+```
+

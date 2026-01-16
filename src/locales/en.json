@@ -6,6 +6,7 @@
     "error": "Error"
   },
   "navbar": {
+    "lang": "Select Language",
     "open": "Open Project",
     "save": "Save Project",
     "connect": "Connect Pico",

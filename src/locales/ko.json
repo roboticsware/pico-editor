@@ -1,12 +1,13 @@
 {
   "common": {
-    "ok": "네",
-    "cancel": "아니요",
+    "ok": "네 (확인)",
+    "cancel": "아니요 (취소)",
     "notice": "알림",
     "error": "오류",
     "dontShowAgain": "다음에 다시 보지 않음"
   },
   "navbar": {
+    "lang": "언어 선택",
     "open": "프로젝트 열기",
     "save": "프로젝트 저장",
     "connect": "피코 연결",

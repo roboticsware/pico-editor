@@ -55,7 +55,7 @@ const handleLangClick = async () => {
         },
       },
       {
-        text: 'Cancel',
+        text: t('common.cancel'),
         role: 'cancel',
       },
     ],

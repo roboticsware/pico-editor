@@ -152,7 +152,7 @@ const initBlockly = async () => {
         minScale: 0.3,
         scaleSpeed: 1.2,
       },
-      // media: 'blockly/media/', // Public 폴더 내 미디어 경로 확인 필요
+      media: 'blockly-media/', // Public 폴더 내 미디어 경로
   });
 
   // 스토어에 워크스페이스 등록 (다른 컴포넌트에서 접근 가능하도록)

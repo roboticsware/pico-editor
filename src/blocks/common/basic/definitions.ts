@@ -417,7 +417,7 @@ export default function define(Blocks: any) {
         .appendField(waitSecondsMsg.split('%1')[1] || '');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(160);
+      this.setColour(maincolour);
       this.setTooltip(tpWaitSecondsMsg);
       this.setHelpUrl('');
     },

@@ -12,7 +12,7 @@ import {
   IonSpinner, actionSheetController
 } from '@ionic/vue';
 import { 
-  play, square, cloudUpload, folderOpen, save, 
+  play, square, download, folderOpen, save, 
   globe, flash, flashOff
 } from 'ionicons/icons';
 
@@ -25,8 +25,9 @@ const langStore = useLangStore();
 // 모드 변경 경고 모달
 const handleModeChangeRequest = async () => {
   const ok = await confirmCustom(
-    '모드 변경 주의', 
-    '모드를 변경하면 작성 중인 블록이 사라질 수 있습니다. 계속할까요?'
+    t('editor.mode_change.title'), 
+    t('editor.mode_change.message'),
+    '⚠️'
   );
 
   if (ok) {
@@ -39,7 +40,7 @@ const { t } = useI18n();
 
 const handleLangClick = async () => {
   const actionSheet = await actionSheetController.create({
-    header: 'Select Language',
+    header: '💡 ' + t('navbar.lang'),
     buttons: [
       {
         text: '한국어',
@@ -165,7 +166,7 @@ const openLibManager = async () => {
 <template>
   <ion-toolbar>
     <ion-buttons slot="start">
-      <ion-title>PICO EDITOR</ion-title>
+      <ion-title class="app-title">Pico Editor</ion-title>
       
       <!-- Mode Icon Button -->
       <ion-button v-if="modeStore.currentModeDetail" @click="handleModeChangeRequest">
@@ -219,7 +220,7 @@ const openLibManager = async () => {
         :disabled="!serialStore.isConnected || serialStore.isUploading"
       >
         <ion-spinner v-if="serialStore.isUploading" name="crescent" style="width: 1em; margin-right: 0.5em;"></ion-spinner>
-        <ion-icon v-else slot="start" :icon="cloudUpload"></ion-icon>
+        <ion-icon v-else slot="start" :icon="download"></ion-icon>
         <span class="ion-hide-sm-down">{{ serialStore.isUploading ? $t('navbar.uploading') : $t('navbar.upload') }}</span>
       </ion-button>
     </ion-buttons>
@@ -233,4 +234,15 @@ const openLibManager = async () => {
   left: 50%;
   transform: translate(-50%, -50%);
 }
+
+.app-title {
+  font-weight: 700;
+  background: linear-gradient(90deg, #2dd36f, #3dc2ff); 
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+}
+
 </style>

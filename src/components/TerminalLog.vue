@@ -22,7 +22,7 @@ onMounted(() => {
 
 <template>
   <div class="terminal-wrapper">
-    <ion-toolbar color="dark" style="--min-height: 36px; border-bottom: 1px solid #333;">
+    <ion-toolbar color="light" style="--min-height: 36px; border-bottom: 1px solid #333;">
         <ion-buttons slot="start" style="min-height: 36px;">
             <ion-icon :icon="terminal" style="margin-left:8px; margin-right:8px; font-size: 14px;"></ion-icon>
             <span style="font-weight: bold; font-size: 12px;">TERMINAL LOG</span>

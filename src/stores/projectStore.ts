@@ -4,8 +4,11 @@ import { loadModeBlocks } from '@/blocks/loader';
 import { useModeStore } from './modeStore';
 import { useCodeStore } from './codeStore';
 import { shallowRef, watch } from 'vue';
+import { alertController } from '@ionic/vue';
+import i18n from '@/i18n';
 
 export const useProjectStore = defineStore('project', () => {
+  const { t } = i18n.global;
   const modeStore = useModeStore();
   const codeStore = useCodeStore();
   const workspace = shallowRef<Blockly.WorkspaceSvg | null>(null); // shallowRef 사용시 내부 객체의 변경은 감시하지 않아 성능에 유리
@@ -15,13 +18,18 @@ export const useProjectStore = defineStore('project', () => {
     workspace.value = ws;
   };
 
-  const saveProject = () => {
+  const saveProject = async () => {
     const ws = workspace.value;
     if (!ws) return;
 
     const json = Blockly.serialization.workspaces.save(ws);
     if (Object.keys(json).length === 0) {
-      alert("저장할 코드가 없습니다.");
+      const alert = await alertController.create({
+        header: '⚠️ ' + t('common.notice'),
+        message: t('project.empty'),
+        buttons: [t('common.ok')],
+      });
+      await alert.present();
       return;
     }
 
@@ -56,7 +64,25 @@ export const useProjectStore = defineStore('project', () => {
 
         // 1단계: 모드 전환이 필요한 경우
         if (projectData.mode && projectData.mode !== modeStore.currentMode) {
-          if (confirm(`모드를 ${projectData.mode}(으)로 전환하고 파일을 불러올까요?`)) {
+
+          const alert = await alertController.create({
+            header: '⚠️ ' + t('common.notice'),
+            message: t('project.load.confirm_msg', { mode: projectData.mode }),
+            buttons: [
+              {
+                text: t('common.cancel'),
+                role: 'cancel',
+              },
+              {
+                text: t('common.ok'),
+                role: 'confirm',
+              },
+            ],
+          });
+          await alert.present();
+          const { role } = await alert.onDidDismiss();
+
+          if (role === 'confirm') {
             // 모드 블록 로드
             await loadModeBlocks(projectData.mode);
 
@@ -84,7 +110,12 @@ export const useProjectStore = defineStore('project', () => {
             try {
               targetWs = await workspaceReadyPromise;
             } catch (error) {
-              alert("워크스페이스 전환 중 오류가 발생했습니다. 다시 시도해주세요.");
+              const errAlert = await alertController.create({
+                header: '❗ ' + t('common.error'),
+                message: t('project.workspace_error'),
+                buttons: [t('common.ok')],
+              });
+              await errAlert.present();
               return;
             }
 
@@ -95,7 +126,12 @@ export const useProjectStore = defineStore('project', () => {
 
         // targetWs 유효성 재확인
         if (!targetWs) {
-          alert("유효한 워크스페이스가 없습니다.");
+          const alert = await alertController.create({
+            header: '❗ ' + t('common.error'),
+            message: t('project.no_workspace'),
+            buttons: [t('common.ok')]
+          });
+          await alert.present();
           return;
         }
 
@@ -132,7 +168,12 @@ export const useProjectStore = defineStore('project', () => {
         }
       } catch (err) {
         console.error("파일 로드 오류:", err);
-        alert("프로젝트를 불러오는 중 문제가 발생했습니다.");
+        const alert = await alertController.create({
+          header: '❗ ' + t('common.error'),
+          message: t('project.load_error'),
+          buttons: [t('common.ok')],
+        });
+        await alert.present();
       }
     };
     reader.readAsText(file);

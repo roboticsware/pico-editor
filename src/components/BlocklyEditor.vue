@@ -3,10 +3,11 @@ import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 import BlocklyCanvas from './BlocklyCanvas.vue'
 import RightPanel from './RightPanel.vue'
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useCodeStore } from '@/stores/codeStore';
-import { IonAlert } from '@ionic/vue';
+import { IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonFooter, IonButtons, IonButton } from '@ionic/vue';
 import { useI18n } from 'vue-i18n';
+import { warning } from 'ionicons/icons';
 
 const { t } = useI18n();
 const canvasRef = ref<InstanceType<typeof BlocklyCanvas> | null>(null);
@@ -22,27 +23,18 @@ const showModal = ref(false);
 const rightPanelRef = ref<InstanceType<typeof RightPanel> | null>(null);
 const codeStore = useCodeStore();
 
-const alertButtons = computed(() => [
-  {
-    text: t('editor.modal.cancel'),
-    role: 'cancel',
-    handler: () => {
-      showModal.value = false;
-      if (rightPanelRef.value?.pythonViewerRef) {
-        rightPanelRef.value.pythonViewerRef.focusTextEditor();
-      }
-    }
-  },
-  {
-    text: t('editor.modal.confirm'),
-    role: 'confirm',
-    handler: () => {
-      codeStore.hasUnsavedChanges = false;
-      codeStore.isManualEditing = false;
-      showModal.value = false;
-    }
+const handleCancel = () => {
+  showModal.value = false;
+  if (rightPanelRef.value?.pythonViewerRef) {
+    rightPanelRef.value.pythonViewerRef.focusTextEditor();
   }
-]);
+};
+
+const handleConfirm = () => {
+  codeStore.hasUnsavedChanges = false;
+  codeStore.isManualEditing = false;
+  showModal.value = false;
+};
 </script>
 
 <template>
@@ -57,13 +49,25 @@ const alertButtons = computed(() => [
       </pane>
     </splitpanes>
     
-    <ion-alert
-      :is-open="showModal"
-      :header="t('editor.modal.title')"
-      :message="t('editor.modal.description')"
-      :buttons="alertButtons"
-      @didDismiss="showModal = false"
-    ></ion-alert>
+    <ion-modal :is-open="showModal" @didDismiss="showModal = false" class="warning-modal">
+      <ion-header>
+        <ion-toolbar>
+          <ion-icon :icon="warning" slot="start" color="warning" size="large"></ion-icon>
+          <ion-title>{{ t('editor.modal.title') }}</ion-title>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div v-html="t('editor.modal.description')"></div>
+      </ion-content>
+      <ion-footer>
+        <ion-toolbar>
+          <ion-buttons slot="end">
+            <ion-button @click="handleCancel" color="medium">{{ t('common.cancel') }}</ion-button>
+            <ion-button @click="handleConfirm" color="primary">{{ t('common.ok') }}</ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-footer>
+    </ion-modal>
   </div>
 </template>
 
@@ -115,5 +119,20 @@ const alertButtons = computed(() => [
   /* 호버 시 중앙 가이드라인 색상 변경 */
   :deep(.splitpanes__splitter:hover::before) {
     background-color: #42b983;
+  }
+
+  /* Warning Modal Styling */
+  ion-modal.warning-modal {
+    --width: fit-content;
+    --min-width: 300px;
+    --max-width: 600px;
+    --height: 30%;
+    --border-radius: 16px;
+    --box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+
+  ion-modal.warning-modal::part(content) {
+    margin: auto;
+    border-radius: 16px;
   }
 </style>

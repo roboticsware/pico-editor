@@ -34,14 +34,20 @@
     "connectError": "❌ Connection Failed: {error}",
     "disconnectSuccess": "✅ Pico Disconnected Successfully",
     "disconnectError": "❌ Disconnection Failed: {error}",
-    "uploadSuccess": "✅ main.py Uploaded Successfully",
+    "uploadSuccess": "✅ main.py Uploaded Successfully! The device will be rebooted automatically.",
     "uploadError": "❌ Upload Failed: {error}",
     "runSuccess": "✅ Code Executed Successfully",
     "runError": "❌ Code Execution Failed: {error}",
     "stopSuccess": "✅ Code Execution Stopped",
     "stopError": "❌ Stop Failed: {error}",
-    "noCodeToUpload": "❌ No code to upload. Please write some code first.",
-    "noCodeToRun": "❌ No code to run. Please write some code first."
+    "noCodeToUpload": "No code to upload. Please write some code first.",
+    "noCodeToRun": "No code to run. Please write some code first.",
+    "picoZeroRequired": "⚠️ PicoZero library is required. Please install it in the Library Manager!",
+    "serialNotSupported": "This browser does not support Web Serial API. Please use Chrome or Edge.",
+    "noDeviceSelected": "No device selected or found.",
+    "noDeviceFound": "No device found to connect. Please check if your Pico is properly connected.",
+    "securityError": "Blocked by security policy. (Please check if you are in an HTTPS environment)",
+    "portAlreadyOpen": "Could not open serial port. Please try again later or check if it's already in use by another program."
   },
   "project": {
     "empty": "No code to save.",

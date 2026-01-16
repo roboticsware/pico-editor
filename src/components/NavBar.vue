@@ -6,7 +6,7 @@ import { useLogStore } from '../stores/logStore';
 import { useSerialStore } from '../stores/serialStore';
 import { useLangStore } from '../stores/langStore';
 import { useModeStore } from '../stores/modeStore';
-import { confirmCustom } from '../services/modal-confirm';
+import { confirmCustom, alertCustom } from '../services/modal-confirm';
 import { 
   IonToolbar, IonButtons, IonButton, IonTitle, IonIcon, 
   IonSpinner, actionSheetController
@@ -106,14 +106,14 @@ const handleConnectionToggle = async () => {
 // 실행 핸들러
 async function handleRunToggle() {
   if (!codeStore.pythonCode) {
-    alert(t('msg.noCodeToRun'));
+    await alertCustom(t('common.notice'), t('msg.noCodeToRun'), '💡');
     return;
   }
 
   if (!serialStore.isRunning) {
     try {
       if (codeStore.pythonCode.includes('picozero') && !serialStore.isInstalled('picozero.py')) {
-        alert("PicoZero 라이브러리가 필요합니다. 라이브러리 매니저에서 설치해주세요!");
+        await alertCustom(t('common.notice'), t('msg.picoZeroRequired'), '⚠️');
         openLibManager();
         return;
       }
@@ -136,7 +136,7 @@ async function handleRunToggle() {
 // 업로드 핸들러
 async function handleUpload() {
   if (!codeStore.pythonCode) {
-    alert(t('msg.noCodeToUpload'));
+    await alertCustom(t('common.notice'), t('msg.noCodeToUpload'), '💡');
     return;
   }
 

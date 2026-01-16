@@ -17,6 +17,8 @@ export const basicModule = {
       CONTROLS: "제어",
       OPERATORS: "연산",
       VARIABLES: "변수",
+      WAIT_SECONDS: "기다리기 %1 초",
+      TP_WAIT_SECONDS: "지정된 시간만큼 대기합니다.",
     },
     en: {
       BASIC: "Basic",
@@ -28,6 +30,8 @@ export const basicModule = {
       CONTROLS: "Controls",
       OPERATORS: "Operators",
       VARIABLES: "Variables",
+      WAIT_SECONDS: "Wait %1 seconds",
+      TP_WAIT_SECONDS: "Wait for a specified amount of time.",
     }
   }
 };

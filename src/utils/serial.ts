@@ -1,22 +1,63 @@
 // Pico(MicroPython)와의 시리얼 통신을 위한 유틸리티
+import i18n from '@/i18n';
+import { alertCustom } from '@/services/modal-confirm';
+
 export class PicoSerial {
   private port: SerialPort | null = null;
   private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   private reader: ReadableStreamDefaultReader | null = null;
   private logListener: ((data: string) => void) | null = null;
+  private disconnectListener: (() => void) | null = null;
+
+  constructor() {
+    if (typeof navigator !== 'undefined' && 'serial' in navigator) {
+      navigator.serial.addEventListener('disconnect', (event) => {
+        // 현재 연결된 포트가 분리되었는지 확인
+        if (this.port === (event as any).port || this.port === event.target) {
+          console.log('[Serial] Device disconnected unexpectedly.');
+          this.handleUnexpectedDisconnect();
+        }
+      });
+    }
+  }
+
+  private handleUnexpectedDisconnect() {
+    // 내부 상태 초기화 (이미 연결이 끊겼으므로 port.close() 호출은 생략할 수 있음)
+    this.reader = null;
+    this.writer = null;
+    this.port = null;
+    if (this.disconnectListener) {
+      this.disconnectListener();
+    }
+  }
+
+  setDisconnectListener(callback: () => void) {
+    this.disconnectListener = callback;
+  }
+
+  setLogListener(callback: (data: string) => void) {
+    this.logListener = callback;
+  }
 
   // 1. 포트 요청 및 연결
   async connect(): Promise<boolean> {
+    const { t } = i18n.global;
     try {
       // 1. 브라우저 지원 여부 확인
       if (!('serial' in navigator)) {
-        alert('이 브라우저는 Web Serial API를 지원하지 않습니다. 크롬/엣지를 사용하세요.');
+        await alertCustom(t('common.error'), t('msg.serialNotSupported'), '❌');
         return false;
       }
       // 2. 포트 요청 (반드시 사용자 클릭 이벤트 내부여야 함)
       // @ts-ignore: Web Serial API 타입 미지원 대비
       this.port = await navigator.serial.requestPort();
+
+      if (!this.port) {
+        throw new Error(t('msg.noDeviceSelected'));
+      }
+
       await this.port.open({ baudRate: 115200 });
+
       if (this.port.readable) {
         this.reader = this.port.readable.getReader();
       }
@@ -27,19 +68,15 @@ export class PicoSerial {
 
     } catch (error: any) {
       if (error.name === 'NotFoundError') {
-        console.log('사용자가 장치 선택을 취소했습니다.');
+        throw new Error(t('msg.noDeviceFound'));
       } else if (error.name === 'SecurityError') {
-        console.error('보안 정책에 의해 차단되었습니다 (HTTPS 확인 필요).');
+        throw new Error(t('msg.securityError'));
+      } else if (error.message.includes('Failed to open serial port')) {
+        throw new Error(t('msg.portAlreadyOpen'));
       } else {
-        console.error('연결 중 알 수 없는 에러:', error);
+        throw error; // 기타 예상치 못한 에러는 그대로 던짐
       }
     }
-
-    return false;
-  }
-
-  setLogListener(callback: (data: string) => void) {
-    this.logListener = callback;
   }
 
   // 리더 자원을 안전하게 해제하는 별도 함수
@@ -52,30 +89,35 @@ export class PicoSerial {
     }
   }
 
+  private incomingBuffer: string = "";
+
   async startListening() {
     if (!this.reader) return;
-    
+
     const decoder = new TextDecoder();
     try {
       while (true) {
         const { value, done } = await this.reader.read();
         if (done) break;
-        if (value && this.logListener) {
-          // 데이터를 텍스트로 변환하여 리스너에 전달
-          this.logListener(decoder.decode(value));
+        if (value) {
+          const text = decoder.decode(value);
+          this.incomingBuffer += text; // 버퍼에 누적
+          if (this.logListener) {
+            this.logListener(text);
+          }
         }
       }
     } catch (error: any) {
-    // 기기 재부팅을 위한 machine.reset() 등으로 인한 연결 끊김은 정상으로 처리
-    if (error.message.includes('lost') || error.name === 'NetworkError') {
-      console.log("Device reset detected (Network (lost) Error). Cleaning up...");
-    } else {
-      console.error("Listening error:", error);
+      // 기기 재부팅을 위한 machine.reset() 등으로 인한 연결 끊김은 정상으로 처리
+      if (error.message.includes('lost') || error.name === 'NetworkError') {
+        console.log("Device reset detected (Network (lost) Error). Cleaning up...");
+      } else {
+        console.error("Listening error:", error);
+      }
+    } finally {
+      // 에러가 나든 정상 종료되든 리더를 닫아줌
+      await this.cleanupReader();
     }
-  } finally {
-    // 에러가 나든 정상 종료되든 리더를 닫아줌
-    await this.cleanupReader();
-  }
   }
 
   // 2. 텍스트 전송 (명령어 전송용)
@@ -94,9 +136,9 @@ export class PicoSerial {
     await new Promise(r => setTimeout(r, 500)); // 약간의 대기 후 코드 전송
 
     // Ctrl+A: Raw REPL 모드 진입 (대량의 코드를 보낼 때 안정적임)
-    await this.write('\x01'); 
+    await this.write('\x01');
     await new Promise(r => setTimeout(r, 100));
-    
+
     // 실제 코드 전송
     await this.write(code);
 
@@ -108,11 +150,11 @@ export class PicoSerial {
     if (!this.writer) return;
 
     // 1. 준비 작업: 현재 실행 중인 코드 중단 (Ctrl+C)
-    await this.write('\x03'); 
+    await this.write('\x03');
     await new Promise(r => setTimeout(r, 300));
 
     // 2. Raw REPL 모드 진입 (Ctrl+A)
-    await this.write('\x01'); 
+    await this.write('\x01');
     await new Promise(r => setTimeout(r, 100));
 
     // 3. 코드를 Base64로 인코딩 (한글/특수문자 대응 UTF-8)
@@ -127,7 +169,7 @@ export class PicoSerial {
       `with open('${filename}', 'wb') as f:`, // 인자로 받은 파일명 적용
       "    f.write(ubinascii.a2b_base64(b64))",
       shouldReset ? "import machine; machine.reset()" : "" // 옵션에 따른 리셋 여부
-    ].filter(line => line !== "").join('\n') + '\n\x04'; 
+    ].filter(line => line !== "").join('\n') + '\n\x04';
 
     // 5. 데이터 쪼개서 보내기 (Chunk 전송)
     const encoder = new TextEncoder();
@@ -137,13 +179,13 @@ export class PicoSerial {
     for (let i = 0; i < data.length; i += chunkSize) {
       const chunk = data.slice(i, i + chunkSize);
       await this.writer.write(chunk);
-      
+
       if (onProgress) {
         const progress = Math.round(((i + chunk.length) / data.length) * 100);
         onProgress(progress);
       }
-      
-      await new Promise(r => setTimeout(r, 20)); 
+
+      await new Promise(r => setTimeout(r, 20));
     }
 
     // 6. 정상 모드 복귀 (Ctrl+B)
@@ -172,60 +214,42 @@ export class PicoSerial {
         await this.port.close();
         this.port = null;
       }
-      
+
       console.log("포트가 안전하게 닫혔습니다.");
     } catch (error) {
       console.error("연결 해제 중 오류:", error);
     }
   }
 
-  
+
   // 파이썬 명령을 실행하고 그 출력 결과(stdout)를 반환합니다.
   async executeCommand(command: string): Promise<string> {
-    if (!this.port || !this.port.writable) throw new Error("Not connected");
-
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
-    const writer = this.port.writable.getWriter();
+    if (!this.port || !this.writer) throw new Error("Not connected");
 
     try {
       // 1. 명령 전송 (\r\n 필수)
-      await writer.write(encoder.encode(command + "\r\n"));
-      writer.releaseLock();
+      await this.write(command + "\r\n");
 
-      // 2. 결과 읽기 (간단한 구현을 위해 잠시 대기하며 버퍼를 모음)
-      // 실제 구현 시에는 특정 종료 문자(>>>)가 나올 때까지 읽는 것이 정확합니다.
+      // 2. 결과 읽기 (startListening에서 누적된 버퍼 사용)
       return await this.readResponse();
     } catch (err) {
-      writer.releaseLock();
       throw err;
     }
   }
 
   private async readResponse(): Promise<string> {
-    if (!this.port || !this.port.readable) return "";
-    
-    const reader = this.port.readable.getReader();
-    const decoder = new TextDecoder();
-    let response = "";
-    
-    try {
-      // 대략 500ms 동안 들어오는 데이터를 모읍니다. (네트워크/보드 상태에 따라 조절)
-      const timeout = setTimeout(() => reader.cancel(), 500);
-      
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        response += decoder.decode(value);
-        // MicroPython REPL 종료 기호(>>> )가 보이면 읽기 중단
-        if (response.includes(">>> ")) break;
+    this.incomingBuffer = ""; // 버퍼 비우고 대기
+
+    // 최대 1초 동안 MicroPython REPL 종료 기호(>>> )가 나올 때까지 대기
+    const startTime = Date.now();
+    while (Date.now() - startTime < 1000) {
+      if (this.incomingBuffer.includes(">>> ")) {
+        break;
       }
-      clearTimeout(timeout);
-    } finally {
-      reader.releaseLock();
+      await new Promise(r => setTimeout(r, 50));
     }
-    
-    return response;
+
+    return this.incomingBuffer;
   }
 
   // 파이썬 리스트 문자열 파싱 로직

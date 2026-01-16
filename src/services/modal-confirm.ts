@@ -33,3 +33,26 @@ export const confirmCustom = async (
     await alert.present();
   });
 };
+
+/**
+ * Global functional alert dialog using Ionic Alert
+ */
+export const alertCustom = async (
+  title: string,
+  message: string,
+  icon?: string
+): Promise<void> => {
+  const { t } = i18n.global;
+
+  const alert = await alertController.create({
+    header: icon ? `${icon} ${title}` : title,
+    message: message,
+    buttons: [
+      {
+        text: t('common.ok'),
+        role: 'confirm'
+      }
+    ]
+  });
+  await alert.present();
+};

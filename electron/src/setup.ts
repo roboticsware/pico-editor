@@ -190,27 +190,63 @@ export class ElectronCapacitorApp {
       }
     });
 
-    // Web Serial API support for Electron
-    this.MainWindow.webContents.session.on('select-serial-port', (event, portList, webContents, callback) => {
+    // Link electron plugins into the system.
+    setupCapacitorElectronPlugins();
+
+    // Web Serial API support for Electron (Global Setup)
+    session.defaultSession.on('select-serial-port', (event, portList, webContents, callback) => {
+      console.log('[Electron Serial]: Available ports:', portList);
+
+      // Add a listener to help with hot-plugging during the selection process
+      const portAddedListener = (e: any, port: any) => {
+        console.log('[Electron Serial]: Port added:', port);
+        if (port.vendorId && Number(port.vendorId) === 11914) {
+          event.preventDefault();
+          callback(port.portId);
+          webContents.session.removeListener('serial-port-added', portAddedListener);
+        }
+      };
+      webContents.session.on('serial-port-added', portAddedListener);
+
       event.preventDefault();
-      if (portList && portList.length > 0) {
-        callback(portList[0].portId);
+
+      // 1. Prioritize Raspberry Pi Pico (0x2E8A / 11914)
+      const picoPort = portList.find(p => p.vendorId && Number(p.vendorId) === 11914);
+      if (picoPort) {
+        console.log('[Electron Serial]: Pico found, automatically selecting:', picoPort.displayName);
+        callback(picoPort.portId);
       } else {
-        callback('');
+        // 2. Filter out Bluetooth and other non-Pico ports on macOS
+        // Common unwanted ports: Bluetooth-Incoming-Port, SOC, etc.
+        const filteredPorts = portList.filter(p => {
+          const name = (p.displayName || '').toLowerCase();
+          return !name.includes('bluetooth') && !name.includes('soc') && !name.includes('incoming-port');
+        });
+
+        if (filteredPorts.length > 0) {
+          console.log('[Electron Serial]: No Pico found, selecting first filtered port:', filteredPorts[0].displayName);
+          callback(filteredPorts[0].portId);
+        } else {
+          console.log('[Electron Serial]: No suitable ports found.');
+          // Return empty string to trigger NotFoundError in renderer, 
+          // which will be caught and shown as a nice message.
+          callback('');
+        }
       }
+
+      // Cleanup listener after selection
+      setTimeout(() => {
+        webContents.session.removeListener('serial-port-added', portAddedListener);
+      }, 5000);
     });
 
-    this.MainWindow.webContents.session.setPermissionCheckHandler((_webContents, permission, _requestingOrigin) => {
-      if (permission === 'serial') {
-        return true;
-      }
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission, _requestingOrigin) => {
+      if (permission === 'serial') return true;
       return false;
     });
 
-    this.MainWindow.webContents.session.setDevicePermissionHandler((details) => {
-      if (details.deviceType === 'serial') {
-        return true;
-      }
+    session.defaultSession.setDevicePermissionHandler((details) => {
+      if (details.deviceType === 'serial') return true;
       return false;
     });
 
@@ -219,9 +255,6 @@ export class ElectronCapacitorApp {
         event.preventDefault();
       }
     });
-
-    // Link electron plugins into the system.
-    setupCapacitorElectronPlugins();
 
     // When the web app is loaded we hide the splashscreen if needed and show the mainwindow.
     this.MainWindow.webContents.on('dom-ready', () => {

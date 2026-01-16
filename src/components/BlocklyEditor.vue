@@ -5,7 +5,7 @@ import BlocklyCanvas from './BlocklyCanvas.vue'
 import RightPanel from './RightPanel.vue'
 import { ref } from 'vue';
 import { useCodeStore } from '@/stores/codeStore';
-import { IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonFooter, IonButtons, IonButton } from '@ionic/vue';
+import { IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonFooter, IonButtons, IonButton, IonIcon } from '@ionic/vue';
 import { useI18n } from 'vue-i18n';
 import { warning } from 'ionicons/icons';
 

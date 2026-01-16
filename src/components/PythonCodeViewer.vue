@@ -5,7 +5,7 @@ import { EditorView, basicSetup } from "codemirror";
 import { python } from "@codemirror/lang-python";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap } from "@codemirror/view";
-import { indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, historyKeymap, indentWithTab, history } from "@codemirror/commands";
 import { useI18n } from 'vue-i18n';
 import { 
   IonToolbar, IonButtons, IonButton, IonIcon, IonBadge 
@@ -111,9 +111,13 @@ onMounted(() => {
         shadowTheme,
         basicSetup, 
         python(),   
-        oneDark,    
-        // 탭 키를 눌렀을 때 빈칸(들여쓰기)가 작동하도록 설정
-        keymap.of([indentWithTab]), 
+        oneDark,   
+        history(),   
+        keymap.of([
+          ...defaultKeymap,
+          ...historyKeymap,
+          indentWithTab // 탭 키를 눌렀을 때 빈칸(들여쓰기)가 작동하도록 설정
+        ]), 
         // 사용자 타이핑 감지 시 즉시 스토어에 자동 저장 (실시간 동기화)
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isUpdatingFromStore) {

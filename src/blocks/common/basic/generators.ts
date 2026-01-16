@@ -22,7 +22,7 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
 
   // --- 2. 기본 제어문 (Basic Control Structures) ---
   P.forBlock['while_true'] = (block: Blockly.Block) => `while True:\n${getBranch(block, 'DO')}`;
-  
+
   P.forBlock['whileout'] = (block: Blockly.Block) => {
     const cond = P.valueToCode(block, 'cond', ORDER) || 'True';
     return `while ${cond}:\n${getBranch(block, 'DO')}`;
@@ -70,7 +70,7 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
     const name = P.valueToCode(block, 'class', ORDER) || 'ClassName';
     return `class ${name}:\n${getBranch(block, 'DO')}`;
   };
-  
+
   // --- 6. 연산 및 인라인 블록 (Expressions - Return Array) ---
   P.forBlock['internal'] = (block: Blockly.Block) => {
     const first = P.valueToCode(block, 'first', ORDER);
@@ -86,7 +86,7 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
   };
 
   P.forBlock['textinline'] = (block: Blockly.Block) => [block.getFieldValue('text'), ORDER];
-  
+
   P.forBlock['stringinline'] = (block: Blockly.Block) => [`"${block.getFieldValue('text')}"`, ORDER];
 
   P.forBlock['typeanything'] = (block: Blockly.Block) => {
@@ -133,7 +133,7 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
     return [code, ORDER];
   };
 
-   // --- 6. 기타 필수 블록 ---
+  // --- 6. 기타 필수 블록 ---
   P.forBlock['varprint'] = (block: Blockly.Block) => {
     const val = P.valueToCode(block, 'var', ORDER) || '';
     return `print(${val})\n`;
@@ -142,5 +142,10 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
   P.forBlock['printnew'] = (block: Blockly.Block) => {
     const msg = P.valueToCode(block, 'text', ORDER) || "'Hello World'";
     return `print(${msg})\n`;
+  };
+
+  P.forBlock['base_delay'] = (block: Blockly.Block) => {
+    const sec = block.getFieldValue('SEC') || '1';
+    return `time.sleep(${sec})\n`;
   };
 }

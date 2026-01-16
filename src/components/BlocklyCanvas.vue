@@ -3,7 +3,6 @@ import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import * as Blockly from 'blockly';
 import { pythonGenerator } from 'blockly/python';
 import { useCodeStore } from '../stores/codeStore';
-// import { sanitizeCode } from '../utils/code-sanitizer';
 import { useModeStore } from '../stores/modeStore';
 import { useProjectStore } from '../stores/projectStore';
 import { loadModeBlocks } from '../blocks/loader';

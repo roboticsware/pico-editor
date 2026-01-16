@@ -405,4 +405,21 @@ export default function define(Blocks: any) {
       this.setHelpUrl('');
     },
   };
+
+  Blocks['base_delay'] = {
+    init: function () {
+      const waitSecondsMsg = Blockly.Msg['WAIT_SECONDS'] || '기다리기 %1 초';
+      const tpWaitSecondsMsg = Blockly.Msg['TP_WAIT_SECONDS'] || '지정된 시간만큼 대기합니다.';
+
+      this.appendDummyInput()
+        .appendField(waitSecondsMsg.split('%1')[0] || '')
+        .appendField(new Blockly.FieldNumber(1, 0, undefined, 0.1), "SEC")
+        .appendField(waitSecondsMsg.split('%1')[1] || '');
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(160);
+      this.setTooltip(tpWaitSecondsMsg);
+      this.setHelpUrl('');
+    },
+  };
 }

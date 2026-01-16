@@ -56,9 +56,9 @@
     "vue-router": "^4.6.4"
   },
   "devDependencies": {
-    "@tsconfig/node20": "^20.1.4",
+    "@tsconfig/node22": "^22.0.5",
     "@types/dom-serial": "^1.0.6",
-    "@types/node": "^20.17.11",
+    "@types/node": "22",
     "@types/splitpanes": "^2.2.6",
     "@vitejs/plugin-vue": "^6.0.3",
     "@vue/cli-service": "5.0.9",

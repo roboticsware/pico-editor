@@ -283,7 +283,7 @@ export function setupContentSecurityPolicy(customScheme: string): void {
         'Content-Security-Policy': [
           electronIsDev
             ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data:`
-            : `default-src ${customScheme}://* 'unsafe-inline' data:`,
+            : `html <meta http-equiv="Content-Security-Policy" content="default-src ${customScheme}://* 'unsafe-inline' 'unsafe-eval' data: blob:;">`,
         ],
       },
     });

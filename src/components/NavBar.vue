@@ -16,6 +16,8 @@ import {
   play, square, download, folderOpen, save, 
   globe, moon, sunny, flash, flashOff
 } from 'ionicons/icons';
+import { Capacitor } from '@capacitor/core';
+import { toastController } from '@ionic/vue';
 
 const codeStore = useCodeStore();
 const logStore = useLogStore();
@@ -23,6 +25,88 @@ const serialStore = useSerialStore();
 const modeStore = useModeStore();
 const langStore = useLangStore();
 const themeStore = useThemeStore();
+
+// 업데이트 및 환경 관련
+const isElectron = !!window.ElectronUpdater;
+const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+const isNative = Capacitor.isNativePlatform();
+const isAppMode = isElectron || isPWA || isNative;
+
+const updateProgress = ref(0);
+const isDownloading = ref(false);
+
+if (isElectron) {
+  window.ElectronUpdater.onUpdateAvailable((info) => {
+    alertCustom(t('update.title'), t('update.available') + ` (v${info.version})`, '🎉');
+  });
+
+  window.ElectronUpdater.onUpdateNotAvailable(() => {
+    toastController.create({
+      message: t('update.not_available'),
+      duration: 2000,
+      position: 'bottom',
+      color: 'success'
+    }).then(t => t.present());
+  });
+
+  window.ElectronUpdater.onUpdateError((err) => {
+    logStore.addLog('error', t('update.error', { error: err }));
+  });
+
+  window.ElectronUpdater.onDownloadProgress((progress) => {
+    isDownloading.value = true;
+    updateProgress.value = Math.floor(progress.percent);
+  });
+
+  window.ElectronUpdater.onUpdateDownloaded(() => {
+    isDownloading.value = false;
+    confirmCustom(t('update.title'), t('update.downloaded'), '✅').then(ok => {
+      if (ok) {
+        window.ElectronUpdater.quitAndInstall();
+      }
+    });
+  });
+}
+
+const handleUpdateCheck = async () => {
+  if (!isAppMode) return;
+
+  const ok = await confirmCustom(t('update.title'), t('update.confirm_check'), '❓');
+  if (!ok) return;
+  
+  if (isElectron) {
+    const toast = await toastController.create({
+      message: t('update.checking'),
+      duration: 1000,
+      position: 'bottom'
+    });
+    await toast.present();
+    
+    const res = await window.ElectronUpdater.checkForUpdates();
+    if (res.status === 'dev-mode') {
+      alertCustom(t('update.title'), t('update.dev_mode'), '🛠️');
+    } else if (res.status === 'error') {
+      logStore.addLog('error', t('update.error', { error: res.message }));
+    }
+  } else if (isPWA) {
+    // PWA update logic
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        await registration.update();
+        toastController.create({
+          message: t('update.checking'),
+          duration: 2000,
+          position: 'bottom'
+        }).then(t => t.present());
+      }
+    }
+  } else if (isNative) {
+    // Native update check - usually handled by app stores or OTA service
+    // For now just show a message.
+    alertCustom(t('update.title'), t('msg.letsStartCoding'), '📱');
+  }
+};
 
 // 모드 변경 경고 모달
 const handleModeChangeRequest = async () => {
@@ -168,8 +252,12 @@ const openLibManager = async () => {
 <template>
   <ion-toolbar class="main-navbar">
     <ion-buttons slot="start">
-      <div class="logo-container">
-        <span class="logo-text">PICO EDITOR</span>
+      <div class="logo-container" @click="handleUpdateCheck" :class="{ 'clickable-logo': isAppMode }">
+        <span v-if="isDownloading" class="logo-download-info">
+          <ion-spinner name="crescent" size="small"></ion-spinner>
+          <span class="progress-percent">{{ updateProgress }}%</span>
+        </span>
+        <span v-else class="logo-text">PICO EDITOR</span>
       </div>
       
       <!-- Mode Icon Button -->
@@ -260,6 +348,19 @@ const openLibManager = async () => {
 .logo-container {
   padding-left: 10px;
   margin-right: 20px;
+  transition: opacity 0.2s;
+}
+
+.clickable-logo {
+  cursor: pointer;
+}
+
+.clickable-logo:hover {
+  opacity: 0.8;
+}
+
+.clickable-logo:active {
+  opacity: 0.6;
 }
 
 .logo-text {
@@ -268,6 +369,20 @@ const openLibManager = async () => {
   font-weight: 800;
   letter-spacing: 0.2em;
   color: var(--ion-color-primary);
+  user-select: none;
+}
+
+.logo-download-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ion-color-primary);
+}
+
+.progress-percent {
+  font-family: var(--app-font-main);
+  font-size: 0.9rem;
+  font-weight: 800;
 }
 
 .center-group {
@@ -357,6 +472,7 @@ ion-button {
   height: 18px;
   margin-right: 6px;
 }
+
 
 ion-icon {
   font-size: 1.2rem;

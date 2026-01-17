@@ -3,7 +3,8 @@
     "ok": "OK",
     "cancel": "Cancel",
     "notice": "Notice",
-    "error": "Error"
+    "error": "Error",
+    "select": "Select"
   },
   "navbar": {
     "lang": "Select Language",
@@ -25,6 +26,7 @@
       "description": "<strong>Please note that any manual code changes will be lost if you continue with block coding. To keep your edits safe, we recommend saving them to a separate file first.<br/><br/>Do you want to continue with block coding?</strong>"
     },
     "mode_change": {
+      "select": "Select Mode",
       "title": "Mode Change Warning",
       "message": "Changing the mode may cause current blocks to be lost. Do you want to continue?"
     }
@@ -64,5 +66,16 @@
       "title": "Mode Change Warning",
       "message": "Changing the mode may cause current blocks to be lost. Do you want to continue?"
     }
+  },
+  "update": {
+    "title": "Check for Updates",
+    "checking": "Checking for updates...",
+    "available": "A new version is available. Would you like to download it?",
+    "not_available": "You are using the latest version.",
+    "confirm_check": "Would you like to check for updates for the latest version?",
+    "error": "Error checking for updates: {error}",
+    "downloading": "Downloading... ({percent}%)",
+    "downloaded": "Update downloaded. Restart and install now?",
+    "dev_mode": "Update check is not available in development mode."
   }
 }

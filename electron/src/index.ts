@@ -1,7 +1,7 @@
 import type { CapacitorElectronConfig } from '@capacitor-community/electron';
 import { getCapacitorElectronConfig, setupElectronDeepLinking } from '@capacitor-community/electron';
 import type { MenuItemConstructorOptions } from 'electron';
-import { app, MenuItem } from 'electron';
+import { app, MenuItem, ipcMain } from 'electron';
 import electronIsDev from 'electron-is-dev';
 import unhandled from 'electron-unhandled';
 import { autoUpdater } from 'electron-updater';
@@ -45,8 +45,6 @@ if (electronIsDev) {
   setupContentSecurityPolicy(myCapacitorApp.getCustomURLScheme());
   // Initialize our app, build windows, and load content.
   await myCapacitorApp.init();
-  // Check for updates if we are in a packaged app.
-  autoUpdater.checkForUpdatesAndNotify();
 })();
 
 // Handle when all of our windows are close (platforms have their own expectations).
@@ -68,3 +66,39 @@ app.on('activate', async function () {
 });
 
 // Place all ipc or other electron api calls and custom functionality under this line
+
+ipcMain.handle('check-for-updates', async () => {
+  if (electronIsDev) {
+    return { status: 'dev-mode', message: 'Update check is disabled in development mode.' };
+  }
+  try {
+    const result = await autoUpdater.checkForUpdatesAndNotify();
+    return { status: 'success', result };
+  } catch (error) {
+    return { status: 'error', message: error.message };
+  }
+});
+
+autoUpdater.on('update-available', (info) => {
+  myCapacitorApp.getMainWindow().webContents.send('update-available', info);
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  myCapacitorApp.getMainWindow().webContents.send('update-not-available', info);
+});
+
+autoUpdater.on('error', (err) => {
+  myCapacitorApp.getMainWindow().webContents.send('update-error', err.message);
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  myCapacitorApp.getMainWindow().webContents.send('update-download-progress', progressObj);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  myCapacitorApp.getMainWindow().webContents.send('update-downloaded', info);
+});
+
+ipcMain.handle('quit-and-install', () => {
+  autoUpdater.quitAndInstall();
+});

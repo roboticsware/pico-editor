@@ -2,7 +2,7 @@
   <ion-modal :is-open="!modeStore.currentMode" :backdrop-dismiss="false">
     <ion-header>
       <ion-toolbar>
-        <ion-title>Select your mode</ion-title>
+        <ion-title>{{ t('editor.mode_change.select') }}</ion-title>
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
@@ -18,7 +18,7 @@
                   <ion-card-title class="ion-text-center">{{ mode.name }}</ion-card-title>
                 </ion-card-header>
                 <ion-card-content>
-                  <ion-button expand="block">Select</ion-button>
+                  <ion-button expand="block">{{ t('common.select') }}</ion-button>
                 </ion-card-content>
               </ion-card>
             </ion-col>
@@ -31,6 +31,7 @@
 
 <script setup lang="ts">
 import { useModeStore } from '../stores/modeStore';
+import { useI18n } from 'vue-i18n';
 import { 
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent, 
   IonGrid, IonRow, IonCol, IonCard, IonCardHeader, 
@@ -38,6 +39,7 @@ import {
 } from '@ionic/vue';
 
 const modeStore = useModeStore();
+const { t } = useI18n();
 </script>
 
 <style scoped>

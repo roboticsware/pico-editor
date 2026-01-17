@@ -17,19 +17,19 @@ cd pico-editor
 
 ### Install Dependancies
 ```sh
-npm install
+yarn install
 ```
 
 ### Compile and Hot-Reload for Development
 
 ```sh
-npm run dev
+yarn dev
 ```
 
 ### Type-Check, Compile and Minify for Production
 
 ```sh
-npm run build
+yarn build
 ```
 
 ## Desktop Build (Electron)
@@ -42,7 +42,7 @@ Before building the desktop app for the first time, you must install dependencie
 ```sh
 # From the project root
 cd electron
-npm install
+yarn install
 cd ..
 ```
 
@@ -52,10 +52,10 @@ To build the project and open it in Electron:
 
 ```sh
 # 1. Build web app and copy to electron folder
-npm run electron:build
+yarn electron:build
 
 # 2. Launch the app
-npm run electron:open
+yarn electron:open
 ```
 
 ### 3. Creating Installers (Production)
@@ -64,17 +64,17 @@ To create a standalone installer (EXE, DMG, etc.), use the commands below. These
 
 #### Windows (NSIS x64)
 ```sh
-npm run electron:make:win
+yarn electron:make:win
 ```
 
 #### macOS (DMG)
 ```sh
-npm run electron:make:mac
+yarn electron:make:mac
 ```
 
 #### Linux (AppImage, deb)
 ```sh
-npm run electron:make:linux
+yarn electron:make:linux
 ```
 
 > **Note:** For Windows and Linux, it is recommended to run the build command on the respective target operating system for the best compatibility.

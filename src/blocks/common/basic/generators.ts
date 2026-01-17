@@ -19,6 +19,7 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
   P.forBlock['random'] = () => 'import random\n';
   P.forBlock['pass'] = () => 'pass\n';
   P.forBlock['break'] = () => 'break\n';
+  P.forBlock['start_comment'] = () => '# Start code here\n';
 
   // --- 2. 기본 제어문 (Basic Control Structures) ---
   P.forBlock['while_true'] = (block: Blockly.Block) => `while True:\n${getBranch(block, 'DO')}`;

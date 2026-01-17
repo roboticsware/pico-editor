@@ -9,9 +9,13 @@ import { loadModeBlocks } from '../blocks/loader';
 
 import { useI18n } from 'vue-i18n';
 import { useLangStore } from '../stores/langStore';
+import { useThemeStore } from '../stores/themeStore';
 import * as Ko from 'blockly/msg/ko';
 import * as En from 'blockly/msg/en';
+import { IonToolbar, IonButtons, IonIcon } from '@ionic/vue';
+import { extensionPuzzle } from 'ionicons/icons';
 const langStore = useLangStore();
+const themeStore = useThemeStore();
 const { t, tm} = useI18n();
 
 const codeStore = useCodeStore();
@@ -78,49 +82,93 @@ const themeConfig = {
   'name': 'scratch_theme',
   'base': Blockly.Themes.Classic,
   'blockStyles': {
+    'basic_blocks': { 
+        'colourPrimary': '#ff0066', 
+        'colourSecondary': '#e6005c', 
+        'colourTertiary': '#cc0052' 
+    },
     'logic_blocks': { 
-        'colourPrimary': '#FFAB19', 
-        'colourSecondary': '#EC9C13', 
-        'colourTertiary': '#CF8B0A' 
+        'colourPrimary': '#38bdf8', 
+        'colourSecondary': '#0ea5e9', 
+        'colourTertiary': '#0284c7' 
     },
     'loop_blocks': { 
-        'colourPrimary': '#FFAB19', 
-        'colourSecondary': '#EC9C13', 
-        'colourTertiary': '#CF8B0A' 
+        'colourPrimary': '#818cf8', 
+        'colourSecondary': '#6366f1', 
+        'colourTertiary': '#4f46e5' 
     },
     'math_blocks': { 
-        'colourPrimary': '#59C059', 
-        'colourSecondary': '#46B946', 
-        'colourTertiary': '#389438' 
+        'colourPrimary': '#34d399', 
+        'colourSecondary': '#10b981', 
+        'colourTertiary': '#059669' 
     },
     'variable_blocks': { 
-        'colourPrimary': '#FF8C1A', 
-        'colourSecondary': '#FF8000', 
-        'colourTertiary': '#DB6E00' 
+        'colourPrimary': '#fbbf24', 
+        'colourSecondary': '#f59e0b', 
+        'colourTertiary': '#d97706' 
     },
     'procedure_blocks': { 
-        'colourPrimary': '#FF6680', 
-        'colourSecondary': '#FF4D6A', 
-        'colourTertiary': '#FF3355' 
+        'colourPrimary': '#f472b6', 
+        'colourSecondary': '#ec4899', 
+        'colourTertiary': '#db2777' 
+    },
+    'hardware_blocks': { 
+        'colourPrimary': '#673ab7', 
+        'colourSecondary': '#5e35b1', 
+        'colourTertiary': '#512da8' 
     }
   },
   'categoryStyles': {
-    'logic_category': { 'colour': '#FFAB19' },
-    'loop_category': { 'colour': '#FFAB19' },
-    'math_category': { 'colour': '#59C059' },
-    'variable_category': { 'colour': '#FF8C1A' }
+    'basic_category': { 'colour': '#ff0066' },
+    'logic_category': { 'colour': '#38bdf8' },
+    'loop_category': { 'colour': '#818cf8' },
+    'math_category': { 'colour': '#34d399' },
+    'variable_category': { 'colour': '#fbbf24' },
+    'procedure_category': { 'colour': '#f472b6' },
+    'hardware_category': { 'colour': '#673ab7' }
   },
   'componentStyles': {
-    'workspaceBackgroundColour': '#1e1e1e',
-    'toolboxBackgroundColour': '#252526',
-    'toolboxForegroundColour': '#cccccc', // toolboxTextColour 대신 사용
-    'flyoutBackgroundColour': '#252526',
-    'flyoutForegroundColour': '#cccccc', // flyoutTextColour 대신 사용
     'insertionMarkerColour': '#000000',
-    'insertionMarkerOpacity': 0.2
+    'insertionMarkerOpacity': 0.2,
+    'hat': 'cap'
   }
 };
-const ScratchTheme = Blockly.Theme.defineTheme(themeConfig.name, themeConfig);
+
+const getVar = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+const darkThemeConfig = {
+  ...themeConfig,
+  'componentStyles': {
+    ...themeConfig.componentStyles,
+    'workspaceBackgroundColour': '#1a1a1a', // Matches variables.css dark background
+    'toolboxBackgroundColour': '#111216', // Matches variables.css toolbox background
+    'flyoutBackgroundColour': '#111216',
+    'toolboxForegroundColour': '#9ca3af',
+    'flyoutForegroundColour': '#9ca3af',
+  }
+};
+
+const lightThemeConfig = {
+  ...themeConfig,
+  'componentStyles': {
+    ...themeConfig.componentStyles,
+    'workspaceBackgroundColour': '#ffffff',
+    'toolboxBackgroundColour': '#f1f5f9', // Slightly gray for contrast
+    'flyoutBackgroundColour': '#f1f5f9',
+    'toolboxForegroundColour': '#4b5563',
+    'flyoutForegroundColour': '#4b5563',
+  }
+};
+
+const BlocklyDarkTheme = Blockly.Theme.defineTheme('dark', darkThemeConfig);
+const BlocklyLightTheme = Blockly.Theme.defineTheme('light', lightThemeConfig);
+
+// 테마 변경 감시
+watch(() => themeStore.isDarkMode, (isDark) => {
+  if (workspace) {
+    workspace.setTheme(isDark ? BlocklyDarkTheme : BlocklyLightTheme);
+  }
+});
 
 const initBlockly = async () => {
   if (!blocklyDiv.value || !modeStore.currentMode) return;
@@ -130,28 +178,33 @@ const initBlockly = async () => {
 
   workspace = Blockly.inject(blocklyDiv.value, {
     toolbox: toolboxConfig,
-    renderer: 'zelos', // 기본 geras 대신 zelos 사용
-      grid: { spacing: 20, length: 3, colour: '#333', snap: true }, // 코딩영역에 그리드 생성
-      horizontalLayout: false,
+    renderer: 'zelos',
+    grid: { 
+      spacing: 25, 
+      length: themeStore.isDarkMode ? 0 : 2, 
+      colour: getVar('--grid-color') || (themeStore.isDarkMode ? 'transparent' : '#e5e7eb'), 
+      snap: true 
+    },
+    horizontalLayout: false,
       toolboxPosition: 'start', // 블록을 꺼내면 카테고리 창을 자동으로 닫음
       move: { // Flyout이 워크스페이스를 밀어내지 않고 위에 뜨게 함
-        scrollbars: {
-          vertical: true,
-          horizontal: true
-        },
-        drag: true,
-        wheel: true
+      scrollbars: {
+        vertical: true,
+        horizontal: true
       },
-      theme: ScratchTheme, // 정의한 테마 적용
-      zoom: {
-        controls: true,
-        wheel: true,
-        startScale: 1.0,
-        maxScale: 3,
-        minScale: 0.3,
-        scaleSpeed: 1.2,
-      },
-      media: 'blockly-media/', // Public 폴더 내 미디어 경로
+      drag: true,
+      wheel: true
+    },
+    theme: themeStore.isDarkMode ? BlocklyDarkTheme : BlocklyLightTheme,
+    zoom: {
+      controls: true,
+      wheel: true,
+      startScale: 1.0,
+      maxScale: 3,
+      minScale: 0.3,
+      scaleSpeed: 1.2,
+    },
+    media: 'blockly-media/',
   });
 
   // 스토어에 워크스페이스 등록 (다른 컴포넌트에서 접근 가능하도록)
@@ -168,11 +221,27 @@ const initBlockly = async () => {
   });
 
   Blockly.svgResize(workspace);
+
+  // 기본 주석 블록 추가 (# Start code here) - 워크스페이스가 비어있을 때만
+  if (workspace.getAllBlocks(false).length === 0) {
+    const startBlock = workspace.newBlock('start_comment');
+    startBlock.initSvg();
+    startBlock.render();
+    startBlock.setDeletable(false); // 삭제 방지
+    // 상단 중앙 배치를 위해 메트릭스 계산
+    const metrics = workspace.getMetrics();
+    // 캔버스 중앙 계산 (View 영역 기준)
+    const centerX = metrics.viewWidth / 2;
+    const blockWidth = startBlock.getHeightWidth().width;
+    // 블록 위치 이동 (X: 중앙, Y: 상단에서 60px 아래)
+    startBlock.moveBy(centerX - blockWidth / 2, 60);
+  }
+
   // 초기화 직후 코드 스토어 동기화 (빈 코드 또는 기본 코드 반영)
   codeStore.triggerCodeUpdate();
 };
 
-// 워크스페이스 변경 감지 리스너
+// 워크스페이스 내 블록변경 감지 리스너
 const onWorkspaceChange = (event: Blockly.Events.Abstract) => {
   // 사용자가 조작뿐만 아니라 FINISHED_LOADING(파일 로드 완료) 이벤트 때도 코드를 갱신함
   if (event.type === Blockly.Events.BLOCK_MOVE || 
@@ -181,6 +250,28 @@ const onWorkspaceChange = (event: Blockly.Events.Abstract) => {
     codeStore.triggerCodeUpdate();
   }
 };
+
+// 테마 보완: 테마 변경 시 블록리 테마와 그리드 업데이트
+watch(() => themeStore.isDarkMode, (isDark) => {
+  if (workspace) {
+    workspace.setTheme(isDark ? BlocklyDarkTheme : BlocklyLightTheme);
+    const grid = workspace.getGrid();
+    if (grid) {
+      // @ts-ignore
+      if (typeof grid.update === 'function') {
+        const gridColor = getVar('--grid-color') || (isDark ? 'transparent' : '#e5e7eb');
+        // @ts-ignore
+        grid.update(isDark ? 0 : 2, gridColor);
+      } else {
+        // Fallback: Re-inject if necessary or just let it be. 
+        // For simplicity, let's try to update via the workspace metrics if possible
+        // but setTheme usually handles most things. Grid might need re-injection for full effect.
+        // Let's re-inject for absolute correctness since Blockly grid is sticky.
+        initBlockly();
+      }
+    }
+  }
+});
 
 // 모드가 바뀔 때마다 블록리 재설정
 watch(() => modeStore.currentMode, async (newMode) => {
@@ -257,14 +348,23 @@ onUnmounted(() => {
 
 <template>
   <div class="canvas-wrapper">
-    <div ref="blocklyDiv" class="blockly-host"></div>
-    
-    <div 
-      v-if="codeStore.hasUnsavedChanges" 
-      @mousedown.stop="checkManualEdit"
-      class="overlay-mask"
-      title="수정된 코드를 먼저 처리해주세요"
-    ></div>
+    <ion-toolbar class="panel-header">
+       <ion-buttons slot="start">
+          <ion-icon :icon="extensionPuzzle" class="header-icon"></ion-icon>
+          <span class="header-title">BLOCKS WORKSPACE</span>
+       </ion-buttons>
+    </ion-toolbar>
+
+    <div class="blockly-container">
+      <div ref="blocklyDiv" class="blockly-host"></div>
+      
+      <div 
+        v-if="codeStore.hasUnsavedChanges" 
+        @mousedown.stop="checkManualEdit"
+        class="overlay-mask"
+        title="수정된 코드를 먼저 처리해주세요"
+      ></div>
+    </div>
   </div>
 </template>
 
@@ -272,8 +372,36 @@ onUnmounted(() => {
   .canvas-wrapper {
     width: 100%;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .panel-header {
+    --min-height: 38px;
+    --padding-start: 16px;
+    --background: var(--panel-header-bg);
+    --border-width: 0px !important; /* Ionic Toolbar 자체 보더 제거 */
+    border-bottom: none !important;
+  }
+  .header-icon {
+    font-size: 16px;
+    color: var(--ion-color-primary);
+    margin-right: 10px;
+  }
+  .header-title {
+    font-family: var(--app-font-main);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: var(--panel-header-text);
+    text-transform: uppercase;
+  }
+  .blockly-container {
+    flex: 1;
     position: relative;
     overflow: hidden;
+    background-color: var(--ion-background-color); /* 배경색 일치 */
+    border: none !important;
   }
   .blockly-host {
     width: 100%;
@@ -289,21 +417,59 @@ onUnmounted(() => {
   }
   
   /* 사이드바 카테고리 스타일 정의 */
+  :deep(.blocklyToolboxDiv) {
+    border-right: 1px solid var(--ion-border-color);
+  }
+  :deep(.blocklyTreeRoot) {
+    padding: 12px 0;
+  }
   :deep(.blocklyTreeRow) {
-    height: 40px !important;
-    margin-bottom: 8px !important;
-    padding: 8px 16px !important;
-    border-radius: 8px !important;
+    height: 44px !important;
+    margin: 4px 12px !important;
+    padding: 0 16px !important;
+    border-radius: 12px !important;
     border: none !important;
+    color: inherit !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+  :deep(.blocklyTreeRow:not(.blocklyTreeSelected):hover) {
+    background-color: rgba(148, 163, 184, 0.1) !important;
+  }
+  :deep(.blocklyTreeSelected) {
+    background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
+    color: white !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4) !important;
   }
   :deep(.blocklyTreeLabel) {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--app-font-main);
+    letter-spacing: 0.2px;
   }
 
-  /* 블록 목록 창(Flyout) 배경을 반투명하게 */
+  /* 블록 목록 창(Flyout) 배경 */
   :deep(.blocklyFlyoutBackground) {
-    fill: rgba(8, 18, 32, 0.7) !important; /* DaisyUI base-200 색상 + 투명도 */
-    backdrop-filter: blur(8px); /* 뒤쪽 블록들이 살짝 비치는 효과 */
+    fill: var(--ion-background-color) !important;
+    fill-opacity: 0.8 !important;
+  }
+  :deep(.blocklyFlyout) {
+    border-right: 1px solid var(--ion-border-color);
+    box-shadow: 10px 0 30px rgba(0,0,0,0.05);
+  }
+
+  /* 블록리 자체 보더 및 배경 잔상 제거 */
+  :deep(.blocklySvg) {
+    border: none !important;
+    outline: none !important;
+  }
+  :deep(.blocklyMainBackground) {
+    stroke: none !important;
+  }
+  :deep(.blocklyInjectionDiv) {
+    border: none !important;
+    outline: none !important;
+  }
+  :deep(.blocklyWidgetDiv), :deep(.blocklyTooltipDiv) {
+    border: none !important;
   }
 </style>

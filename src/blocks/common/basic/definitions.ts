@@ -1,7 +1,7 @@
 import * as Blockly from 'blockly';
 
 export default function define(Blocks: any) {
-  const maincolour = "#ff0066";
+  const maincolour = "#4facfe"; // Tech Blue
   const white = "#FFFFFF";
 
   // --- 1. 기초 및 라이브러리 임포트 블록 ---
@@ -19,11 +19,21 @@ export default function define(Blocks: any) {
         this.appendDummyInput().appendField(b.text);
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
-        this.setColour(maincolour);
+        this.setStyle('basic_blocks');
         this.setTooltip(b.tooltip);
       }
     };
   });
+
+  // --- 1-1. 특별 시작 블록 ---
+  Blocks['start_comment'] = {
+    init: function () {
+      this.appendDummyInput().appendField("# Start code here");
+      this.setNextStatement(true, null);
+      this.setStyle('variable_blocks');
+      this.setTooltip('Starting comment.');
+    }
+  };
 
   // --- 2. 제어문 (Loops & Logic) ---
   Blocks['while_true'] = {
@@ -34,7 +44,7 @@ export default function define(Blocks: any) {
         .appendField('');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('loop_blocks');
       this.setTooltip('Forever loop.');
       this.setHelpUrl('https://t.co/PCZC5EFe4D');
     },
@@ -48,7 +58,7 @@ export default function define(Blocks: any) {
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('loop_blocks');
     }
   };
 
@@ -61,7 +71,7 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('logic_blocks');
     }
   };
 
@@ -74,7 +84,7 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('logic_blocks');
     }
   };
 
@@ -84,7 +94,7 @@ export default function define(Blocks: any) {
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('logic_blocks');
     }
   };
 
@@ -96,7 +106,7 @@ export default function define(Blocks: any) {
         .appendField('');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('logic_blocks');
       this.setTooltip('Else statement');
       this.setHelpUrl('');
     },
@@ -115,7 +125,7 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('logic_blocks');
       this.setTooltip('Except');
       this.setHelpUrl('');
     },
@@ -131,7 +141,7 @@ export default function define(Blocks: any) {
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('loop_blocks');
     }
   };
 
@@ -151,7 +161,7 @@ export default function define(Blocks: any) {
         .setCheck(null);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('loop_blocks');
       this.setTooltip('');
       this.setHelpUrl('');
     },
@@ -168,7 +178,7 @@ export default function define(Blocks: any) {
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('procedure_blocks');
     }
   };
 
@@ -179,7 +189,7 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('procedure_blocks');
     }
   };
 
@@ -195,7 +205,7 @@ export default function define(Blocks: any) {
         .appendField('');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('procedure_blocks');
       this.setTooltip('Class Statement.');
       this.setHelpUrl('');
     },
@@ -215,7 +225,7 @@ export default function define(Blocks: any) {
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setInputsInline(true);
-      this.setColour(maincolour);
+      this.setStyle('procedure_blocks');
       this.setTooltip('이미 정의된 함수를 호출합니다.');
     },
   };
@@ -237,7 +247,7 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('basic_blocks');
       this.setTooltip('With block');
       this.setHelpUrl('');
     },
@@ -252,7 +262,7 @@ export default function define(Blocks: any) {
       this.appendValueInput("last").setCheck(null);
       this.setInputsInline(true);
       this.setOutput(true, null);
-      this.setColour(maincolour);
+      this.setStyle('math_blocks');
     }
   };
 
@@ -264,7 +274,7 @@ export default function define(Blocks: any) {
       this.appendValueInput("last").setCheck(null);
       this.setInputsInline(true);
       this.setOutput(true, null);
-      this.setColour(maincolour);
+      this.setStyle('logic_blocks');
     }
   };
 
@@ -276,7 +286,7 @@ export default function define(Blocks: any) {
         .setCheck(null);
       this.setInputsInline(true);
       this.setOutput(true, null);
-      this.setColour(maincolour);
+      this.setStyle('logic_blocks');
       this.setTooltip('negates a Boolean value');
       this.setHelpUrl('http://www.example.com/');
     },
@@ -308,7 +318,7 @@ export default function define(Blocks: any) {
       this.appendDummyInput().appendField("# your own code");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('basic_blocks');
     }
   };
 
@@ -317,7 +327,7 @@ export default function define(Blocks: any) {
     init: function () {
       this.appendDummyInput().appendField(new Blockly.FieldVariable("var"), "VAR");
       this.setOutput(true, null);
-      this.setColour(maincolour);
+      this.setStyle('variable_blocks');
     }
   };
 
@@ -330,7 +340,7 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('variable_blocks');
     }
   };
 
@@ -344,7 +354,7 @@ export default function define(Blocks: any) {
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('variable_blocks');
       this.setTooltip("assign a value, increment, or decrement a variable");
       this.setHelpUrl("");
     }
@@ -358,7 +368,7 @@ export default function define(Blocks: any) {
           ["False", "False"]
         ]), "bool");
       this.setOutput(true, "Boolean");
-      this.setColour(maincolour);
+      this.setStyle('logic_blocks');
       this.setTooltip("");
       this.setHelpUrl("");
     }
@@ -372,7 +382,7 @@ export default function define(Blocks: any) {
         .appendField('.is_pressed()');
       this.setInputsInline(false);
       this.setOutput(true, null);
-      this.setColour(maincolour);
+      this.setStyle('basic_blocks');
       this.setTooltip('Button A Pressed');
       this.setHelpUrl('');
     },
@@ -386,7 +396,7 @@ export default function define(Blocks: any) {
       this.appendDummyInput().appendField(')');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('basic_blocks');
     }
   };
 
@@ -400,7 +410,7 @@ export default function define(Blocks: any) {
         .appendField('" )');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('basic_blocks');
       this.setTooltip('Use this to print a string to the output box.');
       this.setHelpUrl('');
     },
@@ -417,7 +427,7 @@ export default function define(Blocks: any) {
         .appendField(waitSecondsMsg.split('%1')[1] || '');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
-      this.setColour(maincolour);
+      this.setStyle('basic_blocks');
       this.setTooltip(tpWaitSecondsMsg);
       this.setHelpUrl('');
     },

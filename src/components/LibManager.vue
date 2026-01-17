@@ -30,9 +30,9 @@ const handleDelete = (fileName: string) => { /* TODO: SerialService logic */ };
 
 <template>
   <ion-modal :is-open="show" @didDismiss="$emit('close')">
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>{{ $t('lib.title') || 'Library Manager' }}</ion-title>
+    <ion-header class="ion-no-border">
+      <ion-toolbar class="panel-header">
+        <ion-title class="modal-title">{{ $t('lib.title') || 'Library Manager' }}</ion-title>
         <ion-buttons slot="end">
           <ion-button @click="$emit('close')">
             <ion-icon :icon="close" slot="icon-only"></ion-icon>
@@ -91,6 +91,31 @@ const handleDelete = (fileName: string) => { /* TODO: SerialService logic */ };
 </template>
 
 <style scoped>
+.panel-header {
+  --background: var(--ion-background-color);
+  border-bottom: 1px solid var(--ion-border-color);
+}
+
+.modal-title {
+  font-family: var(--app-font-main);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  font-family: var(--app-font-main);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+ion-item {
+  --background: transparent;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --inner-padding-top: 12px;
+  --inner-padding-bottom: 12px;
+}
+
 .lib-actions {
   display: flex;
   align-items: center;

@@ -2,7 +2,9 @@
 import { ref, watch, nextTick, onMounted } from 'vue';
 import { useLogStore } from '../stores/logStore';
 import i18n from '@/i18n';
-import { IonToolbar, IonButtons, IonIcon } from '@ionic/vue';
+import { 
+  IonToolbar, IonButtons, IonIcon 
+} from '@ionic/vue';
 import { terminal } from 'ionicons/icons';
 
 const logStore = useLogStore();
@@ -22,10 +24,10 @@ onMounted(() => {
 
 <template>
   <div class="terminal-wrapper">
-    <ion-toolbar color="light" style="--min-height: 36px; border-bottom: 1px solid #333;">
-        <ion-buttons slot="start" style="min-height: 36px;">
-            <ion-icon :icon="terminal" style="margin-left:8px; margin-right:8px; font-size: 14px;"></ion-icon>
-            <span style="font-weight: bold; font-size: 12px;">TERMINAL LOG</span>
+    <ion-toolbar class="panel-header">
+        <ion-buttons slot="start">
+            <ion-icon :icon="terminal" class="header-icon"></ion-icon>
+            <span class="header-title">TERMINAL OUTPUT</span>
         </ion-buttons>
     </ion-toolbar>
 
@@ -39,32 +41,62 @@ onMounted(() => {
 </template>
 
 <style scoped>
-  .terminal-wrapper {
-    width: 100%;
-    height: 100%;  /* 부모 .terminal-area의 높이를 따름 */
-    display: flex;
-    flex-direction: column;
-    background: #000; /* 완전 검정으로 구분 */
-  }
-  
-  .log-container {
-    flex: 1;
-    padding: 8px;
-    overflow-y: auto;
-    font-family: 'Consolas', monospace;
-  }
+.panel-header {
+  --min-height: 38px;
+  --padding-start: 16px;
+  --background: var(--terminal-header-bg);
+  border-bottom: 1px solid var(--terminal-header-border);
+}
 
-  .log-row {
-    font-size: 12px;
-    margin-bottom: 2px;
-    line-height: 1.4;
-  }
+.header-icon {
+  font-size: 16px;
+  color: var(--ion-color-primary);
+  margin-right: 10px;
+}
 
-  .system { color: #4ade80; }
-  .error { color: #ff6b6b; }
-  .time { color: #666; margin-right: 6px; }
+.header-title {
+  font-family: var(--app-font-main);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--terminal-header-text);
+  text-transform: uppercase;
+}
 
-  /* 스크롤바 디자인 */
-  .log-container::-webkit-scrollbar { width: 4px; }
-  .log-container::-webkit-scrollbar-thumb { background: #444; }
+.terminal-wrapper {
+  width: 100%;
+  height: 100%;  /* 부모 .terminal-area의 높이를 따름 */
+  display: flex;
+  flex-direction: column;
+  background: var(--terminal-bg);
+}
+
+.log-container {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  font-family: var(--app-font-mono);
+  background-color: var(--terminal-bg);
+}
+
+.log-row {
+  font-size: 0.8rem;
+  margin-bottom: 2px;
+  line-height: 1.4;
+  color: var(--terminal-text);
+}
+
+.log-row:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.system { color: var(--ion-color-success); }
+.error { color: var(--ion-color-danger); }
+.time { color: var(--terminal-time); margin-right: 10px; font-weight: 500; }
+
+/* 스크롤바 디자인 */
+.log-container::-webkit-scrollbar { width: 5px; }
+.log-container::-webkit-scrollbar-thumb { background: var(--ion-color-step-100); border-radius: 4px; }
+.log-container::-webkit-scrollbar-thumb:hover { background: var(--ion-color-step-200); }
 </style>

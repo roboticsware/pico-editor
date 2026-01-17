@@ -78,47 +78,28 @@ const handleConfirm = () => {
   } 
 
   /* deep을 사용해야 하위 컴포넌트인 splitpanes의 내부 클래스에 접근 가능합니다. */
-  :deep(.splitpanes--theme-default .splitpanes__splitter) {
-    background-color: #333 !important;
-    border: 1px solid #444 !important;
-    min-width: 7px !important; /* 클릭 영역 확보를 위해 조금 더 키움 */
-    cursor: col-resize; /* 마우스 커서 강제 지정 */
+  :deep(.splitpanes__splitter) {
+    background-color: var(--panel-divider-bg) !important;
+    border: none !important;
+    position: relative;
+    z-index: 10;
   }
-  :deep(.splitpanes--theme-default .splitpanes__splitter:hover) {
-    background-color: #42b983 !important;
+
+  /* 세로 분할선 (Blockly - Panels) */
+  :deep(.splitpanes--vertical > .splitpanes__splitter) {
+    width: 7px !important;
+    cursor: col-resize;
   }
-  /* 세로형 스플리터(RightPanel용)일 때의 두께 설정 */
+
+  /* 가로 분할선 (Code - Terminal) */
   :deep(.splitpanes--horizontal > .splitpanes__splitter) {
-    min-height: 7px !important;
+    height: 7px !important;
     cursor: row-resize;
   }
-  :deep(.splitpanes__splitter) {
-    position: relative;
-    background-color: #1a1a1a !important; /* 배경은 아주 어둡게 */
-  }
-  /* 스플리터 정중앙에 얇은 선 하나를 더 그림 */
-  :deep(.splitpanes__splitter::before) {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    background-color: #444;
-    transition: background-color 0.3s;
-  }
-  /* 세로선 */
-  :deep(.splitpanes--vertical > .splitpanes__splitter::before) {
-    width: 1px;
-    height: 30px;
-  }
-  /* 가로선 */
-  :deep(.splitpanes--horizontal > .splitpanes__splitter::before) {
-    width: 30px;
-    height: 1px;
-  }
-  /* 호버 시 중앙 가이드라인 색상 변경 */
-  :deep(.splitpanes__splitter:hover::before) {
-    background-color: #42b983;
+
+  /* Splitter Hover Effects */
+  :deep(.splitpanes__splitter:hover) {
+    background-color: var(--ion-color-step-300) !important;
   }
 
   /* Warning Modal Styling */

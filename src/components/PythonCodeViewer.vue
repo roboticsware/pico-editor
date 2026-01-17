@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick } from 'vue';
 import { useCodeStore } from '../stores/codeStore';
+import { useThemeStore } from '../stores/themeStore';
 import { EditorView, basicSetup } from "codemirror";
+import { Compartment } from "@codemirror/state";
 import { python } from "@codemirror/lang-python";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap } from "@codemirror/view";
@@ -10,38 +12,41 @@ import { useI18n } from 'vue-i18n';
 import { 
   IonToolbar, IonButtons, IonButton, IonIcon, IonBadge 
 } from '@ionic/vue';
-import { codeSlash } from 'ionicons/icons';
+import { codeSlash, save } from 'ionicons/icons';
 
 const { t } = useI18n();
 const codeStore = useCodeStore();
+const themeStore = useThemeStore();
 const editorContainer = ref<HTMLElement | null>(null);
 let view: EditorView | null = null;
+const themeCompartment = new Compartment();
+const shadowThemeCompartment = new Compartment();
 
 // Shadow DOM 내부에서 사용할 테마 설정
-// 외부 간섭이 없으므로 !important 없이도 적용되지만, CodeMirror 기본값 오버라이딩을 위해 명시
-const shadowTheme = EditorView.theme({
+const getShadowTheme = (isDark: boolean) => EditorView.theme({
   "&": {
     height: "100%",
-    fontSize: "14px"
+    fontSize: "14px",
+    backgroundColor: "var(--editor-bg)"
   },
   ".cm-scroller": {
-    fontFamily: "monospace", /* 시스템 모노스페이스 폰트 사용 */
-    fontWeight: "bold",
-    lineHeight: "1.5",
+    fontFamily: "var(--app-font-mono)",
+    fontWeight: "500",
+    lineHeight: "1.6",
     overflow: "auto"
   },
   ".cm-content": {
     whiteSpace: "pre",
-    padding: "4px 0",
+    padding: "8px 0",
     minHeight: "100%"
   },
   ".cm-gutters": {
-    backgroundColor: "#282c34",
-    borderRight: "1px solid #3e4451",
-    color: "#4b5263"
+    backgroundColor: "var(--editor-gutter-bg)",
+    borderRight: "1px solid var(--editor-border)",
+    color: "var(--ion-color-step-300)"
   },
   ".cm-activeLine": {
-    backgroundColor: "rgba(255, 255, 255, 0.07)"
+    backgroundColor: isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)"
   }
 });
 
@@ -70,66 +75,79 @@ onMounted(() => {
 
     // 2. Host 스타일 정의 (Shadow DOM 컨테이너 자체의 스타일)
     const hostStyle = document.createElement('style');
-    hostStyle.textContent = `
-      :host {
-        display: block;
-        height: 100%;
-        width: 100%;
-        overflow: hidden;
-        text-align: left;
-        background-color: #282c34;
-        position: relative;
-      }
-      /* CodeMirror Editor가 Host를 가득 채우도록 */
-      .cm-editor {
-        height: 100%;
-      }
-      /* 커서 스타일 (깜빡이는 선) */
-      .cm-editor .cm-cursor {
-        border-left: 3px solid #ffcc00 !important; /* 금색 커서 */
-        margin-left: -1.5px; /* 두꺼워진 만큼 정렬 조정 */
-      }
-      /* 선택 영역(드래그) 색상 */
-      .cm-selectionBackground {
-        background-color: rgba(100, 150, 255, 0.3) !important;
-      }
-      /* 현재 활성화된 줄의 줄번호 창(Gutter) 배경색 */
-      .cm-editor.cm-focused .cm-activeLineGutter {
-        background-color: rgba(255, 255, 255, 0.1) !important;
-        color: #ffffff !important;
-        font-weight: bold;
-      }
-    `;
-    // 기존 스타일 제거 후 추가 (중복 방지)
-    shadow.innerHTML = ''; 
+    hostStyle.id = 'cm-host-style';
+    const updateHostStyle = (isDark: boolean) => {
+      hostStyle.textContent = `
+        :host {
+          display: block;
+          height: 100%;
+          width: 100%;
+          overflow: hidden;
+          text-align: left;
+          background-color: var(--editor-bg);
+          position: relative;
+        }
+        /* CodeMirror Editor가 Host를 가득 채우도록 */
+        .cm-editor {
+          height: 100%;
+        }
+        /* 커서 스타일 (깜빡이는 선) */
+        .cm-editor .cm-cursor {
+          border-left: 2px solid var(--ion-color-primary) !important; 
+        }
+        /* 선택 영역(드래그) 색상 */
+        .cm-selectionBackground {
+          background-color: ${isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)'} !important;
+        }
+        /* 현재 활성화된 줄의 줄번호 창(Gutter) 배경색 */
+        .cm-editor.cm-focused .cm-activeLineGutter {
+          background-color: ${isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)'} !important;
+          color: var(--ion-color-primary) !important;
+          font-weight: bold;
+        }
+      `;
+    };
+    updateHostStyle(themeStore.isDarkMode);
     shadow.appendChild(hostStyle);
 
     // 3. EditorView 생성 (Shadow Root 내부에 마운트)
     view = new EditorView({
       doc: codeStore.pythonCode,
       extensions: [
-        shadowTheme,
+        shadowThemeCompartment.of(getShadowTheme(themeStore.isDarkMode)),
+        themeCompartment.of(themeStore.isDarkMode ? oneDark : []),
         basicSetup, 
         python(),   
-        oneDark,   
         history(),   
         keymap.of([
           ...defaultKeymap,
           ...historyKeymap,
-          indentWithTab // 탭 키를 눌렀을 때 빈칸(들여쓰기)가 작동하도록 설정
+          indentWithTab
         ]), 
-        // 사용자 타이핑 감지 시 즉시 스토어에 자동 저장 (실시간 동기화)
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !isUpdatingFromStore) {
-            codeStore.isManualEditing = true; // 블록코딩창 포커스 시 블록코딩용 파이썬코드로의 자동 업데이트를 금지!
-            codeStore.hasUnsavedChanges = true; // "수정된 적 있음" 표시
+            codeStore.isManualEditing = true;
+            codeStore.hasUnsavedChanges = true;
             const currentCode = update.state.doc.toString();
             codeStore.setPythonCode(currentCode);
           }
         }),
       ],
-      root: shadow,   // 중요: 이벤트를 Shadow DOM 기준으로 처리
-      parent: shadow, // 중요: 마운트 위치
+      root: shadow,
+      parent: shadow,
+    });
+
+    // 테마 변경 실시간 반영
+    watch(() => themeStore.isDarkMode, (isDark) => {
+      if (view) {
+        updateHostStyle(isDark);
+        view.dispatch({
+          effects: [
+            shadowThemeCompartment.reconfigure(getShadowTheme(isDark)),
+            themeCompartment.reconfigure(isDark ? oneDark : []),
+          ]
+        });
+      }
     });
   }
 });
@@ -164,15 +182,18 @@ watch(() => codeStore.pythonCode, (newCode) => {
 
 <template>
   <div class="code-viewer-container">
-    <ion-toolbar color="light" style="--min-height: 48px; --padding-start: 8px; --padding-end: 8px;">
-       <ion-buttons slot="start">
-          <ion-icon :icon="codeSlash" style="margin-right: 8px; font-size: 1.2em;"></ion-icon>
-          <span style="font-weight: bold; font-size: 0.9em;">PYTHON CODE</span>
-          <ion-badge v-if="codeStore.isManualEditing" color="warning" style="margin-left: 10px">{{ $t('editor.modified') }}</ion-badge>
-       </ion-buttons>
-       <ion-buttons slot="end">
-          <ion-button size="small" fill="solid" @click="saveToFile()">{{ $t('editor.saveToFile') }}</ion-button>
-       </ion-buttons>
+    <ion-toolbar class="panel-header">
+        <ion-buttons slot="start">
+          <ion-icon :icon="codeSlash" class="header-icon"></ion-icon>
+          <span class="header-title">PYTHON SOURCE</span>
+          <ion-badge v-if="codeStore.isManualEditing" color="warning" class="status-badge">{{ $t('editor.modified') }}</ion-badge>
+        </ion-buttons>
+        <ion-buttons slot="end">
+          <ion-button fill="clear" class="header-action-btn" @click="saveToFile()">
+            <ion-icon :icon="save" slot="start"></ion-icon>
+            {{ $t('editor.saveToFile') }}
+          </ion-button>
+        </ion-buttons>
     </ion-toolbar>
 
     <!-- Shadow Host -->
@@ -185,14 +206,50 @@ watch(() => codeStore.pythonCode, (newCode) => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--ion-background-color, #fff); 
+  background-color: var(--ion-background-color); 
   position: relative;
+}
+
+.panel-header {
+  --min-height: 38px;
+  --padding-start: 16px;
+  --padding-end: 8px;
+  --background: var(--panel-header-bg);
+  border-bottom: 1px solid var(--ion-border-color);
+}
+
+.header-icon {
+  font-size: 16px;
+  color: var(--ion-color-primary);
+  margin-right: 10px;
+}
+
+.header-title {
+  font-family: var(--app-font-main);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--panel-header-text);
+  text-transform: uppercase;
+}
+
+.status-badge {
+  margin-left: 8px;
+  font-size: 10px;
+  --padding-start: 6px;
+  --padding-end: 6px;
+}
+
+.header-action-btn {
+  font-size: 11px;
+  font-family: var(--app-font-main);
+  font-weight: 700;
+  --color: var(--ion-color-secondary);
 }
 
 .editor-area {
   flex: 1;
-  /* overflow: hidden; -> Shadow DOM Host Style (:host)에서 처리하므로 여기선 굳이 필요 없지만 레이아웃 잡기용 */
-  overflow: hidden; 
   position: relative;
+  overflow: hidden;
 }
 </style>

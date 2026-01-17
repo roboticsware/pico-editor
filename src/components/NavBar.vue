@@ -5,6 +5,7 @@ import { useCodeStore } from '../stores/codeStore';
 import { useLogStore } from '../stores/logStore';
 import { useSerialStore } from '../stores/serialStore';
 import { useLangStore } from '../stores/langStore';
+import { useThemeStore } from '../stores/themeStore';
 import { useModeStore } from '../stores/modeStore';
 import { confirmCustom, alertCustom } from '../services/modal-confirm';
 import { 
@@ -13,7 +14,7 @@ import {
 } from '@ionic/vue';
 import { 
   play, square, download, folderOpen, save, 
-  globe, flash, flashOff
+  globe, moon, sunny, flash, flashOff
 } from 'ionicons/icons';
 
 const codeStore = useCodeStore();
@@ -21,6 +22,7 @@ const logStore = useLogStore();
 const serialStore = useSerialStore();
 const modeStore = useModeStore();
 const langStore = useLangStore();
+const themeStore = useThemeStore();
 
 // 모드 변경 경고 모달
 const handleModeChangeRequest = async () => {
@@ -164,19 +166,27 @@ const openLibManager = async () => {
 </script>
 
 <template>
-  <ion-toolbar>
+  <ion-toolbar class="main-navbar">
     <ion-buttons slot="start">
-      <ion-title class="app-title">Pico Editor</ion-title>
+      <div class="logo-container">
+        <span class="logo-text">PICO EDITOR</span>
+      </div>
       
       <!-- Mode Icon Button -->
-      <ion-button v-if="modeStore.currentModeDetail" @click="handleModeChangeRequest">
-        <img :src="modeStore.currentModeDetail.icon" style="width: 24px; height: 24px;" alt="Mode Icon" />
+      <ion-button v-if="modeStore.currentModeDetail" fill="clear" @click="handleModeChangeRequest" class="mode-btn">
+        <div class="mode-icon-frame">
+          <img :src="modeStore.currentModeDetail.icon" alt="Mode Icon" />
+        </div>
+        <span class="mode-name ion-hide-sm-down">{{ modeStore.currentModeDetail.name }}</span>
+      </ion-button>
+       <!-- Theme & Lang -->
+      <ion-button fill="clear" @click="handleLangClick" class="nav-icon-btn">
+        <ion-icon :icon="globe" slot="start"></ion-icon>
+        {{ langStore.currentLang.toUpperCase() }}
       </ion-button>
 
-      <!-- Language Button -->
-      <ion-button @click="handleLangClick">
-        <ion-icon slot="start" :icon="globe"></ion-icon>
-        {{ langStore.currentLang.toUpperCase() }}
+      <ion-button fill="clear" @click="themeStore.toggleTheme" class="nav-icon-btn">
+        <ion-icon slot="icon-only" :icon="themeStore.isDarkMode ? sunny : moon"></ion-icon>
       </ion-button>
     </ion-buttons>
 
@@ -184,12 +194,12 @@ const openLibManager = async () => {
     <ion-buttons class="center-group">
       <input type="file" ref="fileInputRef" @change="onFileSelect" accept=".json" style="display: none;" />
       
-      <ion-button @click="triggerFileInput">
+      <ion-button fill="clear" @click="triggerFileInput" class="nav-ghost-btn">
         <ion-icon slot="start" :icon="folderOpen"></ion-icon>
         <span class="ion-hide-sm-down">{{ $t('navbar.open') }}</span>
       </ion-button>
       
-      <ion-button @click="onFileSave">
+      <ion-button fill="clear" @click="onFileSave" class="nav-ghost-btn">
         <ion-icon slot="start" :icon="save"></ion-icon>
         <span class="ion-hide-sm-down">{{ $t('navbar.save') }}</span>
       </ion-button>
@@ -199,50 +209,176 @@ const openLibManager = async () => {
       <!-- Hardware Actions -->
       <ion-button 
         @click="handleConnectionToggle" 
+        :fill="serialStore.isConnected ? 'outline' : 'clear'"
         :color="serialStore.isConnected ? 'success' : 'medium'"
+        class="connection-btn"
       >
         <ion-icon slot="start" :icon="serialStore.isConnected ? flash : flashOff"></ion-icon>
-        <span class="ion-hide-sm-down">{{ serialStore.isConnected ? $t('navbar.disconnect') : $t('navbar.connect') }}</span>
+        <span class="ion-hide-lg-down">{{ serialStore.isConnected ? $t('navbar.disconnect') : $t('navbar.connect') }}</span>
       </ion-button>
 
       <ion-button 
         @click="handleRunToggle" 
-        :color="serialStore.isRunning ? 'warning' : 'primary'"
+        :color="serialStore.isRunning ? 'warning' : 'success'"
         :disabled="!serialStore.isConnected || serialStore.isUploading"
+        class="run-btn"
       >
         <ion-icon slot="start" :icon="serialStore.isRunning ? square : play"></ion-icon>
-        <span class="ion-hide-sm-down">{{ serialStore.isRunning ? $t('navbar.stop') : $t('navbar.run') }}</span>
+        <span class="ion-hide-lg-down">{{ serialStore.isRunning ? $t('navbar.stop') : $t('navbar.run') }}</span>
       </ion-button>
 
       <ion-button 
         @click="handleUpload" 
-        color="secondary" 
+        fill="clear"
+        color="secondary"
         :disabled="!serialStore.isConnected || serialStore.isUploading"
+        class="upload-btn"
       >
-        <ion-spinner v-if="serialStore.isUploading" name="crescent" style="width: 1em; margin-right: 0.5em;"></ion-spinner>
+        <ion-spinner v-if="serialStore.isUploading" name="crescent" class="btn-spinner"></ion-spinner>
         <ion-icon v-else slot="start" :icon="download"></ion-icon>
-        <span class="ion-hide-sm-down">{{ serialStore.isUploading ? $t('navbar.uploading') : $t('navbar.upload') }}</span>
+        <span class="ion-hide-lg-down">{{ serialStore.isUploading ? $t('navbar.uploading') : $t('navbar.upload') }}</span>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
 </template>
 
 <style scoped>
+.main-navbar {
+  --background: var(--ion-background-color);
+  --color: var(--ion-text-color);
+  --border-width: 0;
+  height: var(--nav-height);
+  padding: 0 20px;
+  border-bottom: 1px solid var(--ion-border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 1000;
+}
+
+.logo-container {
+  padding-left: 10px;
+  margin-right: 20px;
+}
+
+.logo-text {
+  font-family: var(--app-font-main);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--ion-color-primary);
+}
+
 .center-group {
   position: absolute;
-  top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
 }
 
-.app-title {
+.v-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--ion-border-color);
+  margin: 0 12px;
+}
+
+ion-button {
+  --padding-start: 12px;
+  --padding-end: 12px;
+  font-family: var(--app-font-main);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: none;
+  margin: 0 4px;
+}
+
+.nav-icon-btn {
+  --color: var(--ion-color-step-300);
+}
+
+.text-primary-btn {
+  --color: var(--ion-color-primary);
+}
+
+.connection-btn {
+  --border-radius: var(--app-radius-md);
+  height: 36px;
+}
+
+.run-btn {
+  --border-radius: var(--app-radius-md);
+  --background: var(--ion-color-primary);
+  --color: white;
+  height: 36px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.upload-btn {
+  --color: var(--ion-color-secondary);
+}
+
+.mode-btn {
+  --padding-start: 8px;
+  --padding-end: 12px;
+  margin-right: 12px;
+}
+
+.mode-icon-frame {
+  width: 28px;
+  height: 28px;
+  background: white; /* Always white background for icons with non-tp bg */
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-right: 8px;
+}
+
+.mode-icon-frame img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.mode-name {
   font-weight: 700;
-  background: linear-gradient(90deg, #2dd36f, #3dc2ff); 
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: transparent;
-  display: inline-block;
+  color: var(--ion-text-color);
+  letter-spacing: -0.01em;
 }
 
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+}
+
+ion-icon {
+  font-size: 1.2rem;
+}
+
+.ion-hide-md-down {
+  margin-left: 6px;
+}
+
+.ion-hide-lg-down {
+  margin-left: 6px;
+}
+
+@media (max-width: 992px) {
+  .ion-hide-lg-down {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .ion-hide-md-down {
+    display: none;
+  }
+}
 </style>

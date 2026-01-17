@@ -27,20 +27,26 @@ import '@ionic/vue/css/display.css';
  */
 
 /* @import '@ionic/vue/css/palettes/dark.always.css'; */
-/* @import '@ionic/vue/css/palettes/dark.class.css'; */
-import '@ionic/vue/css/palettes/dark.system.css';
+import '@ionic/vue/css/palettes/dark.class.css';
+// import '@ionic/vue/css/palettes/dark.system.css';
 
 /* Theme variables */
-// import './theme/variables.css';
+import './theme/variables.css';
 
 import App from './App.vue'
 import router from './router'
 import i18n from './i18n'
+import { useThemeStore } from './stores/themeStore'
 
 const app = createApp(App)
 
 app.use(IonicVue)
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 app.use(i18n)
+
+// Initialize theme
+useThemeStore()
+
 app.mount('#app')

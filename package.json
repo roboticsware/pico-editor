@@ -35,10 +35,14 @@
     "electron:open": "npx cap open electron",
     "electron:make:mac": "npm run electron:build && cd electron && npm run build:mac",
     "electron:make:win": "npm run electron:build && cd electron && npm run build:win",
-    "electron:make:linux": "npm run electron:build && cd electron && npm run build:linux"
+    "electron:make:linux": "npm run electron:build && cd electron && npm run build:linux",
+    "android:build": "npm run build && npx cap copy android && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:run": "npm run android:build && npx cap run android"
   },
   "dependencies": {
     "@capacitor-community/electron": "^5.0.1",
+    "@capacitor/android": "^8.0.1",
     "@capacitor/cli": "^7.4.5",
     "@capacitor/core": "^8.0.1",
     "@codemirror/lang-python": "^6.2.1",

@@ -79,3 +79,41 @@ yarn electron:make:linux
 
 > **Note:** For Windows and Linux, it is recommended to run the build command on the respective target operating system for the best compatibility.
 
+## Android Build (Tablet)
+
+This project supports Android tablet versions using [Capacitor Android](https://capacitorjs.com/docs/android).
+
+### 1. Prerequisites
+
+Before building for Android, ensure you have the following installed:
+- [Android Studio](https://developer.android.com/studio) (latest version)
+- Android SDK (API level 24 or higher)
+- Java Development Kit (JDK) 17 or higher
+
+### 2. Build and Run Android App (Dev Mode)
+
+To build the project and open it in Android Studio:
+
+```sh
+# 1. Build web app and copy to android folder
+yarn android:build
+
+# 2. Open in Android Studio
+yarn android:open
+```
+
+After opening in Android Studio, you can:
+- Connect your Android tablet via USB (with USB debugging enabled)
+- Use an Android emulator
+- Click "Run" to install and launch the app
+
+### 3. Run on Device Directly
+
+To build and run directly on a connected device:
+
+```sh
+yarn android:run
+```
+
+> **Note:** Make sure USB debugging is enabled on your Android device and it's connected to your computer.
+

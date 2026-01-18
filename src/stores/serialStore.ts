@@ -2,12 +2,16 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { serial } from '../utils/serial';
 import { AVAILABLE_LIBRARIES, type Library } from '@/constants/libraries';
+import { ConnectionType } from '@/types/transport';
 
 import { useLogStore } from './logStore';
 import i18n from '@/i18n';
 
 export const useSerialStore = defineStore('serial', () => {
   const { t } = i18n.global;
+
+  // Connection type and state
+  const connectionType = ref<ConnectionType>(ConnectionType.SERIAL);
   const isConnected = ref(false);
   const isRunning = ref(false); // 실행 상태
   const isUploading = ref(false); // 업로드 상태
@@ -18,44 +22,156 @@ export const useSerialStore = defineStore('serial', () => {
   const libraries = ref<Library[]>(AVAILABLE_LIBRARIES);
   const isSyncing = ref(false);
 
+  // WiFi-specific state
+  const wifiConfig = ref({
+    host: '192.168.4.1',
+    port: 8266,
+    password: '',
+  });
+  const ws = ref<WebSocket | null>(null);
+  const lastResponse = ref('');
+
   // 기기 분리 감지 리스너 설정
   serial.setDisconnectListener(() => {
-    isConnected.value = false;
-    isRunning.value = false;
-    isUploading.value = false;
+    if (connectionType.value === ConnectionType.SERIAL) {
+      isConnected.value = false;
+      isRunning.value = false;
+      isUploading.value = false;
 
-    // 로그창에 알림 추가
-    const logStore = useLogStore();
-    logStore.addLog('system', t('navbar.disconnect'));
+      // 로그창에 알림 추가
+      const logStore = useLogStore();
+      logStore.addLog('system', t('navbar.disconnect'));
+    }
   });
 
-  // 공용 함수: 연결하기
-  async function connect() {
-    try {
-      const success = await serial.connect();
-      if (success) {
-        isConnected.value = true;
+  // WiFi WebSocket 설정
+  function setupWebSocketListeners() {
+    if (!ws.value) return;
 
-        serial.setLogListener((data: string) => {
-          // 개발자 모드용 전체 로그 출력 (브라우저 콘솔)
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Serial Raw]:', data);
+    ws.value.onopen = () => {
+      console.log('WebREPL connection opened');
+    };
+
+    ws.value.onmessage = (event) => {
+      const data = event.data;
+
+      if (typeof data === 'string') {
+        lastResponse.value += data;
+
+        // Password prompt
+        if (data.includes('Password:')) {
+          sendWiFiPassword();
+        } else if (data.includes('WebREPL connected')) {
+          isConnected.value = true;
+          console.log('WebREPL authentication successful');
+
+          // Setup log listener for WiFi
+          serial.setLogListener((logData: string) => {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[WiFi Raw]:', logData);
+            }
+
+            const lowerData = logData.toLowerCase();
+            if (lowerData.includes('error') || lowerData.includes('traceback')) {
+              const timestamp = new Date().toLocaleTimeString();
+              errorLogs.value.push({ time: timestamp, content: logData });
+              hasError.value = true;
+            }
+          });
+        } else {
+          // Forward to log listener
+          if (serial['logListener']) {
+            serial['logListener'](data);
           }
-
-          // 에러 키워드 감지 (MicroPython 에러 패턴)
-          const lowerData = data.toLowerCase();
-          if (lowerData.includes('error') || lowerData.includes('traceback')) {
-            const timestamp = new Date().toLocaleTimeString();
-            errorLogs.value.push({ time: timestamp, content: data });
-            hasError.value = true; // 에러 발생 시 UI 상태 업데이트
-          }
-        });
-
-        serial.startListening();
+        }
       }
-      return success;
+    };
+
+    ws.value.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      hasError.value = true;
+    };
+
+    ws.value.onclose = () => {
+      console.log('WebSocket connection closed');
+      if (connectionType.value === ConnectionType.WIFI) {
+        isConnected.value = false;
+        ws.value = null;
+
+        const logStore = useLogStore();
+        logStore.addLog('system', t('navbar.disconnect'));
+      }
+    };
+  }
+
+  function sendWiFiPassword() {
+    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+      ws.value.send(wifiConfig.value.password + '\r\n');
+    }
+  }
+
+  // 공용 함수: 연결하기 (Serial 또는 WiFi)
+  async function connect(config?: { type?: ConnectionType; host?: string; port?: number; password?: string }) {
+    try {
+      // 연결 타입 설정
+      if (config?.type) {
+        connectionType.value = config.type;
+      }
+
+      if (connectionType.value === ConnectionType.WIFI) {
+        // WiFi 연결
+        if (config?.host) wifiConfig.value.host = config.host;
+        if (config?.port) wifiConfig.value.port = config.port;
+        if (config?.password) wifiConfig.value.password = config.password;
+
+        const wsUrl = `ws://${wifiConfig.value.host}:${wifiConfig.value.port}/`;
+        ws.value = new WebSocket(wsUrl);
+
+        setupWebSocketListeners();
+
+        return new Promise<boolean>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            if (!isConnected.value) {
+              disconnect();
+              reject(new Error('Connection timeout'));
+            }
+          }, 10000);
+
+          const checkConnection = setInterval(() => {
+            if (isConnected.value) {
+              clearTimeout(timeout);
+              clearInterval(checkConnection);
+              resolve(true);
+            }
+          }, 100);
+        });
+      } else {
+        // Serial 연결 (기존 로직)
+        const success = await serial.connect();
+        if (success) {
+          isConnected.value = true;
+
+          serial.setLogListener((data: string) => {
+            // 개발자 모드용 전체 로그 출력 (브라우저 콘솔)
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Serial Raw]:', data);
+            }
+
+            // 에러 키워드 감지 (MicroPython 에러 패턴)
+            const lowerData = data.toLowerCase();
+            if (lowerData.includes('error') || lowerData.includes('traceback')) {
+              const timestamp = new Date().toLocaleTimeString();
+              errorLogs.value.push({ time: timestamp, content: data });
+              hasError.value = true; // 에러 발생 시 UI 상태 업데이트
+            }
+          });
+
+          serial.startListening();
+        }
+        return success;
+      }
     } catch (e) {
-      // 에러가 발생한 경우 (기기 없음, 포트 점유 등) 상위(NavBar)로 에러가 전달되도록 다시 던짐
+      // 에러가 발생한 경우 상위로 전달
       throw e;
     }
   }
@@ -66,6 +182,52 @@ export const useSerialStore = defineStore('serial', () => {
     hasError.value = false;
   }
 
+  // 공용 함수: 코드 실행
+  async function run(code: string) {
+    if (!isConnected.value) return;
+    isRunning.value = true;
+
+    if (connectionType.value === ConnectionType.WIFI) {
+      // WiFi REPL 실행
+      if (!ws.value) return;
+
+      lastResponse.value = '';
+      // Send Ctrl+C to interrupt any running code
+      ws.value.send('\x03');
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Send Ctrl+E to enter paste mode
+      ws.value.send('\x05');
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Send the code
+      ws.value.send(code);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Send Ctrl+D to execute
+      ws.value.send('\x04');
+    } else {
+      // Serial REPL 실행
+      await serial.runInREPL(code);
+    }
+  }
+
+  // 공용 함수: 코드 실행 중지
+  async function stop() {
+    if (!isConnected.value) return;
+
+    if (connectionType.value === ConnectionType.WIFI) {
+      // WiFi: Send Ctrl+C to interrupt
+      if (ws.value) {
+        ws.value.send('\x03');
+      }
+    } else {
+      // Serial: 마이크로파이썬에 Ctrl+C (Keyboard Interrupt) 신호 전송
+      await serial.write('\x03');
+    }
+    isRunning.value = false;
+  }
+
   // 공용 함수: 코드 업로드
   async function upload(code: string) {
     if (!isConnected.value) return;
@@ -73,17 +235,41 @@ export const useSerialStore = defineStore('serial', () => {
     isUploading.value = true;
     uploadProgress.value = 0;
     try {
-      // 1. 업로드 로직 실행 (serial.ts의 함수 호출)
-      await serial.uploadFile('main.py', code, (p) => {
-        uploadProgress.value = p; // UI에서 0~100 숫자로 활용 가능
-      }, true); // 실행 코드이므로 리셋 필요
-      // 업로드 성공 후: 기기가 리셋되므로 연결을 끊긴 상태로 변경
-      isConnected.value = false;
-      isRunning.value = false;
-      clearErrorLogs();
-      // 2. 업로드 완료 후 리셋 시간 동안 잠시 대기 (피코가 재부팅되는 시간)
-      await new Promise(r => setTimeout(r, 1000));
-      return true;
+      if (connectionType.value === ConnectionType.WIFI) {
+        // WiFi 업로드 (간소화된 버전)
+        // WebREPL file transfer protocol would be needed for proper implementation
+        // For now, we'll use REPL commands to write the file
+        if (!ws.value) return false;
+
+        const saveCode = `
+with open('main.py', 'w') as f:
+    f.write('''${code.replace(/'/g, "\\'")}''')
+import machine
+machine.reset()
+`;
+        await run(saveCode);
+
+        // WiFi 업로드 후 연결 끊김
+        isConnected.value = false;
+        isRunning.value = false;
+        clearErrorLogs();
+
+        await new Promise(r => setTimeout(r, 1000));
+        return true;
+      } else {
+        // Serial 업로드 (기존 로직)
+        await serial.uploadFile('main.py', code, (p) => {
+          uploadProgress.value = p; // UI에서 0~100 숫자로 활용 가능
+        }, true); // 실행 코드이므로 리셋 필요
+
+        // 업로드 성공 후: 기기가 리셋되므로 연결을 끊긴 상태로 변경
+        isConnected.value = false;
+        isRunning.value = false;
+        clearErrorLogs();
+
+        await new Promise(r => setTimeout(r, 1000));
+        return true;
+      }
     } catch (e) {
       console.error("Upload failed:", e);
       return false;
@@ -92,24 +278,18 @@ export const useSerialStore = defineStore('serial', () => {
     }
   }
 
-  // 공용 함수: 코드 실행
-  async function run(code: string) {
-    if (!isConnected.value) return;
-    isRunning.value = true;
-    await serial.runInREPL(code);
-  }
-
-  // 공용 함수: 코드 실행 중지
-  async function stop() {
-    if (!isConnected.value) return;
-    // 마이크로파이썬에 Ctrl+C (Keyboard Interrupt) 신호 전송
-    await serial.write('\x03');
-    isRunning.value = false;
-  }
-
   // 공용 함수: 연결 해제
   async function disconnect() {
-    await serial.disconnect();
+    if (connectionType.value === ConnectionType.WIFI) {
+      // WiFi 연결 해제
+      if (ws.value) {
+        ws.value.close();
+        ws.value = null;
+      }
+    } else {
+      // Serial 연결 해제
+      await serial.disconnect();
+    }
     isConnected.value = false;
     clearErrorLogs();
   }
@@ -119,7 +299,27 @@ export const useSerialStore = defineStore('serial', () => {
     if (!isConnected.value) return;
     isSyncing.value = true;
     try {
-      installedFiles.value = await serial.getFileList();
+      if (connectionType.value === ConnectionType.WIFI) {
+        // WiFi: Get file list via WebREPL
+        const code = `
+import os
+print(os.listdir())
+`;
+        lastResponse.value = '';
+        await run(code);
+
+        // Wait for response
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Parse file list from response
+        const match = lastResponse.value.match(/\[([^\]]+)\]/);
+        if (match && match[1]) {
+          installedFiles.value = match[1].split(',').map(f => f.trim().replace(/'/g, ''));
+        }
+      } else {
+        // Serial: Get file list
+        installedFiles.value = await serial.getFileList();
+      }
     } catch (error) {
       console.error("Sync failed:", error);
     } finally {
@@ -130,11 +330,22 @@ export const useSerialStore = defineStore('serial', () => {
   const installLibrary = async (lib: Library) => {
     isUploading.value = true;
     try {
-      await serial.uploadFile(lib.fileName, lib.content, (p) => {
-        uploadProgress.value = p; // UI에서 0~100 숫자로 활용 가능
-      }, false); // 라이브러리 설치 시에는 리셋하지 않음
+      if (connectionType.value === ConnectionType.WIFI) {
+        // WiFi: Upload library file
+        const saveCode = `
+with open('${lib.fileName}', 'w') as f:
+    f.write('''${lib.content.replace(/'/g, "\\'")}''')
+`;
+        await run(saveCode);
+        await syncFileList();
+      } else {
+        // Serial: Upload library file
+        await serial.uploadFile(lib.fileName, lib.content, (p) => {
+          uploadProgress.value = p;
+        }, false); // 라이브러리 설치 시에는 리셋하지 않음
 
-      await syncFileList();
+        await syncFileList();
+      }
     } finally {
       isUploading.value = false;
     }
@@ -143,8 +354,19 @@ export const useSerialStore = defineStore('serial', () => {
   const uninstallLibrary = async (fileName: string) => {
     isUploading.value = true;
     try {
-      await serial.deleteFile(fileName);
-      await syncFileList();
+      if (connectionType.value === ConnectionType.WIFI) {
+        // WiFi: Delete file
+        const deleteCode = `
+import os
+os.remove('${fileName}')
+`;
+        await run(deleteCode);
+        await syncFileList();
+      } else {
+        // Serial: Delete file
+        await serial.deleteFile(fileName);
+        await syncFileList();
+      }
     } finally {
       isUploading.value = false;
     }

@@ -4,7 +4,8 @@
     "cancel": "Cancel",
     "notice": "Notice",
     "error": "Error",
-    "select": "Select"
+    "select": "Select",
+    "close": "Close"
   },
   "navbar": {
     "lang": "Select Language",
@@ -28,7 +29,8 @@
     "mode_change": {
       "select": "Select Mode",
       "title": "Mode Change Warning",
-      "message": "Changing the mode may cause current blocks to be lost. Do you want to continue?"
+      "message": "Changing the mode may cause current blocks to be lost. Do you want to continue?",
+      "install_firmware": "New User? Firmware Installation"
     }
   },
   "popup": {
@@ -67,6 +69,20 @@
       "message": "Changing the mode may cause current blocks to be lost. Do you want to continue?"
     }
   },
+  "wifi": {
+    "config_title": "WiFi Connection Settings",
+    "description": "Connect to Raspberry Pi Pico W via WiFi to wirelessly execute code and transfer files.",
+    "host": "Host Address",
+    "port": "Port",
+    "password": "WebREPL Password",
+    "password_placeholder": "Enter password set on Pico",
+    "connect_button": "Connect",
+    "setup_guide": "Pico W Setup Guide",
+    "step1": "Install MicroPython firmware on Pico W",
+    "step2": "Run 'import webrepl_setup' in REPL to configure WebREPL",
+    "step3": "Connect to WiFi network or set up AP mode",
+    "step4": "Check Pico's IP address and enter it above"
+  },
   "update": {
     "title": "Check for Updates",
     "checking": "Checking for updates...",
@@ -77,5 +93,30 @@
     "downloading": "Downloading... ({percent}%)",
     "downloaded": "Update downloaded. Restart and install now?",
     "dev_mode": "Update check is not available in development mode."
+  },
+  "setup": {
+    "title": "Get Started with Pico",
+    "step1_title": "Step 1: Preparation",
+    "step1_desc": "Connect USB cable while holding the <strong>BOOTSEL button</strong>.",
+    "step2_title": "Step 2: Drive Check",
+    "step2_desc": "Please indicate if the <strong>RPI-RP2</strong> drive fits your computer.",
+    "step3_title": "Step 3: Select Model & Install",
+    "step3_desc": "Select your Pico model.",
+    "select_model": "Select Model",
+    "models": {
+      "pico": "Pico",
+      "pico_w": "Pico W",
+      "pico2": "Pico 2",
+      "pico2_w": "Pico 2 W"
+    },
+    "start_install": "Start Firmware Installation",
+    "installing": "Copying firmware... Do not unplug!",
+    "complete": "Installation Complete! Pico is rebooting.",
+    "success_btn": "Finish & Start Coding",
+    "next": "Next",
+    "prev": "Previous",
+    "select_drive": "Select RPI-RP2 Drive",
+    "drive_error": "Drive selection cancelled or error occurred",
+    "copy_error": "Error copying file"
   }
 }

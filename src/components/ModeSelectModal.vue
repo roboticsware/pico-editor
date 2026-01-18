@@ -1,3 +1,19 @@
+<script setup lang="ts">
+import { useModeStore } from '../stores/modeStore';
+import { useI18n } from 'vue-i18n';
+import { ref } from 'vue';
+import SetupGuideModal from './SetupGuideModal.vue';
+import { 
+  IonModal, IonHeader, IonToolbar, IonTitle, IonContent, 
+  IonGrid, IonRow, IonCol, IonCard, IonCardHeader, 
+  IonCardTitle, IonCardContent, IonButton 
+} from '@ionic/vue';
+
+const modeStore = useModeStore();
+const { t } = useI18n();
+const showSetupGuide = ref(false);
+</script>
+
 <template>
   <ion-modal :is-open="!modeStore.currentMode" :backdrop-dismiss="false">
     <ion-header>
@@ -6,6 +22,11 @@
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
+      <div class="modal-footer">
+        <ion-button fill="clear" @click="showSetupGuide = true">
+          {{ t('editor.mode_change.install_firmware') }}
+        </ion-button>
+      </div>
       <div class="modal-container">
         <ion-grid>
           <ion-row class="ion-justify-content-center">
@@ -26,28 +47,16 @@
         </ion-grid>
       </div>
     </ion-content>
+    <SetupGuideModal :is-open="showSetupGuide" @close="showSetupGuide = false" />
   </ion-modal>
 </template>
-
-<script setup lang="ts">
-import { useModeStore } from '../stores/modeStore';
-import { useI18n } from 'vue-i18n';
-import { 
-  IonModal, IonHeader, IonToolbar, IonTitle, IonContent, 
-  IonGrid, IonRow, IonCol, IonCard, IonCardHeader, 
-  IonCardTitle, IonCardContent, IonButton 
-} from '@ionic/vue';
-
-const modeStore = useModeStore();
-const { t } = useI18n();
-</script>
 
 <style scoped>
 .modal-container {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100%;
+  margin-top: 20px;
 }
 
 .mode-card {
@@ -71,5 +80,12 @@ const { t } = useI18n();
 .mode-image {
   max-height: 100%;
   object-fit: contain;
+}
+
+.modal-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
 }
 </style>

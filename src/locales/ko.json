@@ -5,7 +5,8 @@
     "notice": "알림",
     "error": "오류",
     "select": "선택",
-    "dontShowAgain": "다음에 다시 보지 않음"
+    "dontShowAgain": "다음에 다시 보지 않음",
+    "close": "닫기"
   },
   "navbar": {
     "lang": "언어 선택",
@@ -29,7 +30,8 @@
     "mode_change": {
       "select": "모드를 선택하세요",
       "title": "모드 변경 주의",
-      "message": "모드를 변경하면 작성 중인 블록이 사라질 수 있습니다. 계속할까요?"
+      "message": "모드를 변경하면 작성 중인 블록이 사라질 수 있습니다. 계속할까요?",
+      "install_firmware": "새 사용자를 위한 펌웨어 설치"
     }
   },
   "msg": {
@@ -61,6 +63,20 @@
     "no_workspace": "유효한 워크스페이스가 없습니다.",
     "load_error": "프로젝트를 불러오는 중 문제가 발생했습니다."
   },
+  "wifi": {
+    "config_title": "WiFi 연결 설정",
+    "description": "Raspberry Pi Pico W와 WiFi로 연결하여 무선으로 코드를 실행하고 파일을 전송할 수 있습니다.",
+    "host": "호스트 주소",
+    "port": "포트",
+    "password": "WebREPL 비밀번호",
+    "password_placeholder": "Pico에 설정한 비밀번호 입력",
+    "connect_button": "연결",
+    "setup_guide": "Pico W 설정 방법",
+    "step1": "Pico W에 MicroPython 펌웨어를 설치합니다",
+    "step2": "REPL에서 'import webrepl_setup'을 실행하여 WebREPL을 설정합니다",
+    "step3": "WiFi 네트워크에 연결하거나 AP 모드로 설정합니다",
+    "step4": "Pico의 IP 주소를 확인하고 위에 입력합니다"
+  },
   "update": {
     "title": "업데이트 확인",
     "checking": "업데이트 확인 중...",
@@ -71,5 +87,30 @@
     "downloading": "다운로드 중... ({percent}%)",
     "downloaded": "업데이트가 다운로드되었습니다. 지금 재시작하여 설치할까요?",
     "dev_mode": "개발 모드에서는 업데이트 확인을 할 수 없습니다."
+  },
+  "setup": {
+    "title": "새로운 Pico 시작하기",
+    "step1_title": "1단계: 연결 준비",
+    "step1_desc": "<strong>BOOTSEL 버튼</strong>을 누른 상태에서 USB 케이블을 컴퓨터에 연결하세요.",
+    "step2_title": "2단계: 드라이브 인식",
+    "step2_desc": "컴퓨터에 <strong>RPI-RP2</strong> 드라이브가 인식되었는지 확인해주세요.",
+    "step3_title": "3단계: 모델 선택 및 설치",
+    "step3_desc": "사용 중인 Pico 모델을 선택하세요.",
+    "select_model": "모델 선택",
+    "models": {
+      "pico": "Pico",
+      "pico_w": "Pico W",
+      "pico2": "Pico 2",
+      "pico2_w": "Pico 2 W"
+    },
+    "start_install": "펌웨어 설치 시작",
+    "installing": "펌웨어 복사 중... 케이블을 뽑지 마세요!",
+    "complete": "설치 완료! Pico가 재부팅됩니다.",
+    "success_btn": "완료하고 코딩 시작하기",
+    "next": "다음",
+    "prev": "이전",
+    "select_drive": "RPI-RP2 드라이브 선택",
+    "drive_error": "드라이브 선택 취소됨 또는 오류 발생",
+    "copy_error": "파일 복사 중 오류 발생"
   }
 }

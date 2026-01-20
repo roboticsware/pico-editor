@@ -149,47 +149,54 @@ export class PicoSerial {
   async uploadFile(filename: string, code: string, onProgress?: (p: number) => void, shouldReset: boolean = false) {
     if (!this.writer) return;
 
-    // 1. 준비 작업: 현재 실행 중인 코드 중단 (Ctrl+C)
-    await this.write('\x03');
-    await new Promise(r => setTimeout(r, 300));
+    try {
+      // 1. 현재 실행 중인 코드 중단 및 Raw 모드 진입
+      await this.write('\x03\x03\x01');
+      await new Promise(r => setTimeout(r, 200));
 
-    // 2. Raw REPL 모드 진입 (Ctrl+A)
-    await this.write('\x01');
-    await new Promise(r => setTimeout(r, 100));
+      // 2. 파일 열기 명령 전송 (먼저 파일을 쓰기 모드로 엽니다)
+      await this.write(`f = open('${filename}', 'wb')\nimport ubinascii, os, machine\n\x04`);
+      await this.readResponse(); // OK 대기
 
-    // 3. 코드를 Base64로 인코딩 (한글/특수문자 대응 UTF-8)
-    const base64Code = btoa(encodeURIComponent(code).replace(/%([0-9A-F]{2})/g, (match, p1) => {
-      return String.fromCharCode(parseInt(p1, 16));
-    }));
+      // 3. 데이터를 작게 쪼개서 파일에 직접 쓰기
+      const encoder = new TextEncoder();
+      const rawData = encoder.encode(code);
+      const chunkSize = 512; // 한 번에 처리할 바이트 크기
 
-    // 4. 저장 스크립트 구성 (전달받은 filename 사용)
-    const saveScript = [
-      "import ubinascii",
-      `b64 = '${base64Code}'`,
-      `with open('${filename}', 'wb') as f:`, // 인자로 받은 파일명 적용
-      "    f.write(ubinascii.a2b_base64(b64))",
-      shouldReset ? "import machine; machine.reset()" : "" // 옵션에 따른 리셋 여부
-    ].filter(line => line !== "").join('\n') + '\n\x04';
+      for (let i = 0; i < rawData.length; i += chunkSize) {
+        const chunk = rawData.slice(i, i + chunkSize);
+        // Uint8Array를 Base64 문자열로 변환 (작은 조각이므로 btoa 사용 가능)
+        const b64Chunk = btoa(String.fromCharCode(...chunk));
 
-    // 5. 데이터 쪼개서 보내기 (Chunk 전송)
-    const encoder = new TextEncoder();
-    const data = encoder.encode(saveScript);
-    const chunkSize = 64;
+        // 이 조각을 바로 파일에 쓰는 명령 전송
+        await this.write(`f.write(ubinascii.a2b_base64('${b64Chunk}'))\n\x04`);
+        await this.readResponse(); // 각 조각이 써질 때마다 확인 (속도 조절 및 안정성)
 
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunk = data.slice(i, i + chunkSize);
-      await this.writer.write(chunk);
-
-      if (onProgress) {
-        const progress = Math.round(((i + chunk.length) / data.length) * 100);
-        onProgress(progress);
+        if (onProgress) {
+          onProgress(Math.round(((i + chunk.length) / rawData.length) * 100));
+        }
       }
 
-      await new Promise(r => setTimeout(r, 20));
-    }
+      // 4. 버퍼 비우기, 파일 동기화 및 닫기
+      // os.sync()를 호출해야 실제 Flash 메모리에 물리적으로 저장
+      await this.write(`f.flush()\nos.sync()\nf.close()\n\x04`);
+      await this.readResponse();
 
-    // 6. 정상 모드 복귀 (Ctrl+B)
-    await this.write('\x02');
+      // 5. 리셋 여부 확인 및 실행
+      if (shouldReset) {
+        console.log("리셋 명령 전송 중...");
+        await this.write(`machine.reset()\n\x04`);
+        // 리셋 시에는 연결이 끊기므로 응답을 기다리지 않고 종료할 수 있습니다.
+      } else {
+        // 리셋하지 않을 경우 일반 모드로 복귀 (Ctrl+B)
+        await this.write('\x02');
+      }
+
+      console.log(`[${filename}] 업로드 완료! (리셋: ${shouldReset})`);
+    } catch (err) {
+      console.error("업로드 중 오류 발생:", err);
+      throw err;
+    }
   }
 
   async disconnect() {
@@ -227,12 +234,35 @@ export class PicoSerial {
     if (!this.port || !this.writer) throw new Error("Not connected");
 
     try {
-      // 1. 명령 전송 (\r\n 필수)
-      await this.write(command + "\r\n");
+      // 1. 실행 중인 루프 중단 (Ctrl+C)
+      // 두 번 정도 보내주는 것이 확실합니다.
+      await this.write("\x03\x03");
+      // 잠시 대기하여 피코가 중단될 시간을 줍니다.
+      await new Promise(resolve => setTimeout(resolve, 100));
 
-      // 2. 결과 읽기 (startListening에서 누적된 버퍼 사용)
-      return await this.readResponse();
+      // 2. Raw REPL 모드 진입 (Ctrl+A)
+      await this.write("\x01");
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // 3. 명령 전송 + 실행 명령 (Ctrl+D)
+      await this.write(command + "\x04");
+
+      // 4. 결과 읽기
+      let response = await this.readResponse();
+
+      // 5. 응답 정리 (OK 제거 및 결과 추출)
+      // Raw REPL은 성공 시 OK가 먼저 오고, 결과값 뒤에 \x04가 붙습니다.
+      if (response.startsWith("OK")) {
+        response = response.substring(2); // 'OK' 제거
+      }
+      response = (response.split("\x04")[0] || "").trim();
+
+      // 6. 일반 REPL 모드 복귀 (Ctrl+B)
+      await this.write("\x02");
+
+      return response;
     } catch (err) {
+      console.error("명령 실행 실패:", err);
       throw err;
     }
   }
@@ -271,6 +301,27 @@ export class PicoSerial {
   async deleteFile(filename: string) {
     // MicroPython에서 os.remove('파일명') 명령을 실행합니다.
     await this.executeCommand(`import os; os.remove('${filename}')`);
+  }
+
+  // 파일 읽기
+  async readFile(filename: string): Promise<string | null> {
+    // 백틱(`)을 사용하여 줄바꿈과 들여쓰기를 명확히 합니다.
+    // 코드 앞에 공백이 생기지 않도록 왼쪽 벽에 붙여서 작성하는 것이 중요합니다.
+    const command = `
+try:
+    with open('${filename}', 'r') as f:
+        print(f.read())
+except OSError:
+    print("##ENOENT##")
+`;
+    const result = await this.executeCommand(command);
+    if (result.includes("##ENOENT##")) {
+      return null;
+    }
+    // Remove extra prompts or newlines just in case (simple cleaning)
+    // The exact cleaning might depend on REPL echo behavior, 
+    // but executeCommand usually returns the output.
+    return result.trim();
   }
 }
 

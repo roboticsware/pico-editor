@@ -9,7 +9,7 @@ import { useThemeStore } from '../stores/themeStore';
 import { useModeStore } from '../stores/modeStore';
 import { confirmCustom, alertCustom } from '../services/modal-confirm';
 import { 
-  IonToolbar, IonButtons, IonButton, IonTitle, IonIcon, 
+  IonToolbar, IonButtons, IonButton, IonIcon, 
   IonSpinner, actionSheetController
 } from '@ionic/vue';
 import { 
@@ -198,11 +198,6 @@ async function handleRunToggle() {
 
   if (!serialStore.isRunning) {
     try {
-      if (codeStore.pythonCode.includes('picozero') && !serialStore.isInstalled('picozero.py')) {
-        await alertCustom(t('common.notice'), t('msg.picoZeroRequired'), '⚠️');
-        openLibManager();
-        return;
-      }
       await serialStore.run(codeStore.pythonCode);
       logStore.addLog('system', t('msg.runSuccess'));
     } catch (error: any) {
@@ -237,16 +232,6 @@ async function handleUpload() {
     logStore.addLog('error', t('msg.uploadError',  {error: error.message}));
   }
 }
-
-const openLibManager = async () => {
-  if (serialStore.isConnected) {
-    try {
-      await serialStore.syncFileList();
-    } catch (error) {
-      console.error("파일 목록을 가져오는 중 오류 발생:", error);
-    }
-  }
-};
 </script>
 
 <template>

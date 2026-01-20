@@ -11,7 +11,7 @@ export async function flashFirmware(
 
   // Download Firmware (Common)
   // Note: Localization keys usually handled by caller, but we send status keys/text
-  onProgress({ progress: 0.1, status: 'setup.downloading' });
+  onProgress({ progress: 0.1, status: 'setup.progress' });
 
   try {
     const response = await fetch(`/assets/firmwares/${firmwareName}`);
@@ -21,7 +21,7 @@ export async function flashFirmware(
     const blob = await response.blob();
     const arrayBuffer = await blob.arrayBuffer();
 
-    onProgress({ progress: 0.3, status: 'setup.downloading' });
+    onProgress({ progress: 0.3, status: 'setup.progress' });
 
     if (picoOps) { // --- Electron (Direct Copy via IPC) ---
       onProgress({ progress: 0.4, status: 'setup.flashing' });

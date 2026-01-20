@@ -17,7 +17,7 @@ import pico2Img from '@/assets/rp2-pico2.thumb.jpg';
 import pico2WImg from '@/assets/rp2-pico2-w.thumb.jpg';
 import { useDeviceStore } from '@/stores/deviceStore';
 import { alertCustom } from '@/services/modal-confirm';
-import { flashFirmware } from '@/utils/firmware-download';
+import { flashFirmware } from '@/utils/firmware-flash';
 import { Capacitor } from '@capacitor/core';
 
 const props = defineProps<{ isOpen: boolean }>();
@@ -78,7 +78,7 @@ const startInstallation = async () => {
   if (!model) return;
 
   isInstalling.value = true;
-  statusMessage.value = t('setup.downloading', { percent: 0 }); // reset
+  statusMessage.value = t('setup.progress', { percent: 0 }); // reset
   progress.value = 0.05;
 
   try {

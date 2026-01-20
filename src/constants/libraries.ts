@@ -5,7 +5,7 @@ export interface Library {
   description: string;
   version: string;
   sourceUrl?: string; // 나중에 fetch()할 때 사용
-  content: string;    // 현재는 하드코딩된 소스
+  content?: string;    // Assets에서 로드
 }
 
 export const AVAILABLE_LIBRARIES: Library[] = [
@@ -14,9 +14,8 @@ export const AVAILABLE_LIBRARIES: Library[] = [
     name: 'PicoZero',
     fileName: 'picozero.py',
     description: 'A beginner-friendly library for controlling Pico components.',
-    version: '0.4.2',
-    sourceUrl: 'https://raw.githubusercontent.com/picozero/picozero/main/picozero/picozero.py',
-    content: `# PicoZero Library Placeholder\n# (실제 라이브러리 코드가 여기에 들어갑니다)\ndef hello():\n    print("PicoZero Ready")`
+    version: '0.4.5',
+    sourceUrl: 'https://raw.githubusercontent.com/roboticsware/picozero/refs/heads/main/picozero/picozero.py',
   },
   // 추가 라이브러리들...
 ];

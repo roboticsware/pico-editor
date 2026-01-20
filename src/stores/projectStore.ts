@@ -67,7 +67,7 @@ export const useProjectStore = defineStore('project', () => {
 
           const alert = await alertController.create({
             header: '⚠️ ' + t('common.notice'),
-            message: t('project.load.confirm_msg', { mode: projectData.mode }),
+            message: t('project.confirm_msg', { mode: projectData.mode }),
             buttons: [
               {
                 text: t('common.cancel'),

@@ -16,8 +16,8 @@
     "disconnect": "연결 해제",
     "run": "실행 (REPL)",
     "stop": "중지",
-    "upload": "main.py 다운로드",
-    "uploading": "다운로드 중...",
+    "upload": "main.py 업로드",
+    "uploading": "업로드 중...",
     "lib_manager": "라이브러리 관리자"
   },
   "editor": {
@@ -48,7 +48,6 @@
     "stopError": "❌ 중지 실패: {error}",
     "noCodeToUpload": "업로드할 코드가 없습니다. 먼저 코드를 작성해주세요.",
     "noCodeToRun": "실행할 코드가 없습니다. 코드를 먼저 작성해주세요.",
-    "picoZeroRequired": "PicoZero 라이브러리가 필요합니다. 라이브러리 매니저에서 설치해주세요!",
     "serialNotSupported": "이 브라우저는 Web Serial API를 지원하지 않습니다. 크롬/엣지를 사용하세요.",
     "noDeviceSelected": " 장치를 선택하지 않았거나 찾을 수 없습니다.",
     "noDeviceFound": " 연결할 수 있는 장치가 없습니다. 피코가 올바르게 연결되어 있는지 확인해주세요.",
@@ -115,6 +114,6 @@
     "already": "이미 펌웨어가 탑재된 피코입니다. 과정을 종료합니다.",
     "flashing": "펌웨어 복사 중... 케이블을 뽑지 마세요!",
     "rebooting": "재부팅 대기 중... 잠시만 기다려주세요.",
-    "downloading": "다운로드 중... ({percent}%)"
+    "proress": "진행 중... ({percent}%)"
   }
 }

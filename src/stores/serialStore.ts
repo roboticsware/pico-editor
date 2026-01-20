@@ -22,6 +22,9 @@ export const useSerialStore = defineStore('serial', () => {
   const libraries = ref<Library[]>(AVAILABLE_LIBRARIES);
   const isSyncing = ref(false);
 
+  // Cache for library versions on the connected Pico
+  const remoteLibraryManifest = ref<Record<string, string>>({});
+
   // WiFi-specific state
   const wifiConfig = ref({
     host: '192.168.4.1',
@@ -167,6 +170,24 @@ export const useSerialStore = defineStore('serial', () => {
           });
 
           serial.startListening();
+
+          // Initial Sync: Fetch Library Manifest
+          try {
+            const manifestStr = await serial.readFile('.lib_manifest.json');
+            if (manifestStr) {
+              try {
+                remoteLibraryManifest.value = JSON.parse(manifestStr);
+              } catch (jsonErr) {
+                console.warn('Invalid JSON in manifest', jsonErr);
+                remoteLibraryManifest.value = {};
+              }
+            } else {
+              remoteLibraryManifest.value = {};
+            }
+          } catch (e) {
+            console.warn('Failed to load library manifest:', e);
+            remoteLibraryManifest.value = {};
+          }
         }
         return success;
       }
@@ -182,34 +203,112 @@ export const useSerialStore = defineStore('serial', () => {
     hasError.value = false;
   }
 
+  // 라이브러리 자동 설치 확인 로직
+  async function checkAndInstallLibraries(code: string) {
+    // 1. 필요한 라이브러리 파악 (import 구문 파싱)
+    const neededLibs = new Set<string>();
+    const lines = code.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('import ')) {
+        const parts = trimmed.substring(7).split(',');
+        parts.forEach(p => {
+          const libName = p.trim().split(' ')[0];
+          if (libName) neededLibs.add(libName);
+        });
+      } else if (trimmed.startsWith('from ')) {
+        const libName = trimmed.split(' ')[1];
+        if (libName) neededLibs.add(libName);
+      }
+    }
+
+    // 2. 검사 및 설치
+    for (const libID of neededLibs) {
+      const libDef = libraries.value.find(l => l.id === libID || l.fileName === libID + '.py' || l.id === libID.replace('.py', ''));
+      if (libDef) {
+        const remoteVer = remoteLibraryManifest.value[libDef.id];
+
+        let shouldInstall = false;
+        let msg = '';
+
+        if (!remoteVer) {
+          shouldInstall = true;
+          msg = `Installing library: ${libDef.name} (${libDef.version})...`;
+        } else if (remoteVer !== libDef.version) {
+          // 단순 문자열 비교 (Semver 비교가 더 좋지만 일단 다르면 업데이트)
+          shouldInstall = true;
+          msg = `Updating library: ${libDef.name} (${remoteVer} -> ${libDef.version})...`;
+        }
+
+        if (shouldInstall) {
+          // Toast/Log
+          const logStore = useLogStore();
+          logStore.addLog('system', msg);
+          // TODO: Toast UI (via alertCustom or similar? For now silent + log)
+
+          await installLibrary(libDef);
+
+          // Update Manifest
+          const newVer = libDef.version || '0.0.0';
+          remoteLibraryManifest.value[libDef.id] = newVer;
+          const newManifest = JSON.stringify(remoteLibraryManifest.value);
+
+          // Write manifest back to Pico
+          await uploadFile('.lib_manifest.json', newManifest, undefined, false);
+          await new Promise(r => setTimeout(r, 200)); // 잠깐 대기
+        }
+      }
+    }
+  }
+
+  // 내부용: 파일 업로드 (installLibrary에서 사용하던 로직 분리 또는 재사용)
+  // installLibrary가 이미 구현되어 있으니 그걸 쓰면 됨.
+  // 단, manifest 저장을 위해 uploadFile을 직접 호출해야 함. 
+  // serial.uploadFile을 직접 쓰거나 store의 upload를 쓰는데 store upload는 reset을 함.
+  // serial.uploadFile을 직접 쓰는게 나음.
+
+  async function uploadFile(filename: string, content: string, onProgress?: (p: number) => void, reset: boolean = false) {
+    if (connectionType.value === ConnectionType.SERIAL) {
+      await serial.uploadFile(filename, content, onProgress, reset);
+    } else {
+      // WiFi support...
+      const saveCode = `
+with open('${filename}', 'w') as f:
+    f.write('''${content.replace(/'/g, "\\'")}''')
+`;
+      await runInternal(saveCode);
+    }
+  }
+
+  // run() 호출 시 재귀 방지를 위해 내부 실행용 함수 분리
+  async function runInternal(code: string) {
+    if (connectionType.value === ConnectionType.WIFI) {
+      if (!ws.value) return;
+      lastResponse.value = '';
+      ws.value.send('\x03');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      ws.value.send('\x05');
+      await new Promise(resolve => setTimeout(resolve, 100));
+      ws.value.send(code);
+      await new Promise(resolve => setTimeout(resolve, 100));
+      ws.value.send('\x04');
+    } else {
+      await serial.runInREPL(code);
+    }
+  }
+
+
   // 공용 함수: 코드 실행
   async function run(code: string) {
     if (!isConnected.value) return;
+
+    if (connectionType.value === ConnectionType.SERIAL) {
+      await checkAndInstallLibraries(code);
+    }
+
     isRunning.value = true;
 
-    if (connectionType.value === ConnectionType.WIFI) {
-      // WiFi REPL 실행
-      if (!ws.value) return;
-
-      lastResponse.value = '';
-      // Send Ctrl+C to interrupt any running code
-      ws.value.send('\x03');
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Send Ctrl+E to enter paste mode
-      ws.value.send('\x05');
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Send the code
-      ws.value.send(code);
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Send Ctrl+D to execute
-      ws.value.send('\x04');
-    } else {
-      // Serial REPL 실행
-      await serial.runInREPL(code);
-    }
+    await runInternal(code);
   }
 
   // 공용 함수: 코드 실행 중지
@@ -289,6 +388,8 @@ machine.reset()
     } else {
       // Serial 연결 해제
       await serial.disconnect();
+      isRunning.value = false;
+      isUploading.value = false;
     }
     isConnected.value = false;
     clearErrorLogs();
@@ -330,17 +431,31 @@ print(os.listdir())
   const installLibrary = async (lib: Library) => {
     isUploading.value = true;
     try {
+      let content = lib.content;
+      if (!content) {
+        // Load from Assets
+        try {
+          const res = await fetch(`/assets/libs/${lib.fileName}`);
+          if (!res.ok) throw new Error(`Failed to load library: ${res.statusText}`);
+          content = await res.text();
+        } catch (e) {
+          console.error("Library fetch error:", e);
+          // Fallback or abort? Abort seems safer.
+          return;
+        }
+      }
+
       if (connectionType.value === ConnectionType.WIFI) {
         // WiFi: Upload library file
         const saveCode = `
 with open('${lib.fileName}', 'w') as f:
-    f.write('''${lib.content.replace(/'/g, "\\'")}''')
+    f.write('''${content.replace(/'/g, "\\'")}''')
 `;
         await run(saveCode);
         await syncFileList();
       } else {
         // Serial: Upload library file
-        await serial.uploadFile(lib.fileName, lib.content, (p) => {
+        await serial.uploadFile(lib.fileName, content, (p) => {
           uploadProgress.value = p;
         }, false); // 라이브러리 설치 시에는 리셋하지 않음
 

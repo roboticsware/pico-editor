@@ -16,12 +16,16 @@ import picoWImg from '@/assets/rp2-pico-w.thumb.png';
 import pico2Img from '@/assets/rp2-pico2.thumb.jpg';
 import pico2WImg from '@/assets/rp2-pico2-w.thumb.jpg';
 import { useDeviceStore } from '@/stores/deviceStore';
+import { alertCustom } from '@/services/modal-confirm';
+import { flashFirmware } from '@/utils/firmware-download';
+import { Capacitor } from '@capacitor/core';
 
 const props = defineProps<{ isOpen: boolean }>();
 const emit = defineEmits(['close', 'install-complete']);
 const deviceStore = useDeviceStore();
 const { t } = useI18n();
 
+const isElectron = Capacitor.getPlatform() === 'electron';
 const currentStep = ref(1);
 const selectedModel = ref<string>('');
 const isInstalling = ref(false);
@@ -36,23 +40,37 @@ const models = computed(() => [
 ]);
 
 const nextStep = async () => {
-  if (currentStep.value < 3) {
-    currentStep.value++;
+  let next = currentStep.value + 1;
+  // In Electron, skip Step 2 (Drive Check) as it's auto-detected
+  if (isElectron && next === 2) {
+    next = 3;
+  }
+
+  if (next <= 3) {
+    currentStep.value = next;
+
     if (currentStep.value === 3) {
       await deviceStore.scanPicoStatus();
       if (deviceStore.statusType === 'retry') {
-        alert('2번 과정을 다시 확인 후 재시도 해주세요.');
-        currentStep.value--;
+        await alertCustom(t('common.error'), t('setup.retry'), '❌');
+        // Go back to previous step
+        prevStep();
       } else if (deviceStore.statusType === 'already') {
-        alert('이미 펌웨어가 탑재된 피코입니다. 과정을 종료합니다.');
+        await alertCustom(t('common.error'), t('setup.already'), '❌');
         emit('close');
       }
-    } 
+    }
   }
 };
 
 const prevStep = () => {
-  if (currentStep.value > 1) currentStep.value--;
+  let prev = currentStep.value - 1;
+  // In Electron, skip Step 2
+  if (isElectron && prev === 2) {
+    prev = 1;
+  }
+  
+  if (prev >= 1) currentStep.value = prev;
 };
 
 const startInstallation = async () => {
@@ -60,62 +78,43 @@ const startInstallation = async () => {
   if (!model) return;
 
   isInstalling.value = true;
-  statusMessage.value = t('setup.installing');
+  statusMessage.value = t('setup.downloading', { percent: 0 }); // reset
   progress.value = 0.05;
 
   try {
-    // 1. Check for File System Access API support
-    if (!('showDirectoryPicker' in window)) {
-      throw new Error("File System Access API not supported");
-    }
-
-    // 2. Ask user to select the RPI-RP2 drive
-    // We use showDirectoryPicker to get a handle to the drive root
-    statusMessage.value = t('setup.select_drive');
-    const dirHandle = await (window as any).showDirectoryPicker({
-      id: 'pico-firmware-install',
-      mode: 'readwrite',
-      startIn: 'desktop' // Hint to start at a location likely to have drives (OS dependent)
+    await flashFirmware(model.firm, (status) => {
+       progress.value = status.progress;
+       // Check if status is a key or raw text. util sends keys now.
+       // Some statuses might need params (percent) in UI, but util sends generic simple keys.
+       // We can check the key and add params if needed, or just translate.
+       // 'setup.flashing' etc.
+       statusMessage.value = t(status.status); 
     });
 
-    if (!dirHandle) throw new Error("No directory selected");
-
-    // 3. Fetch firmware file
-    statusMessage.value = 'Downloading Firmware...';
-    progress.value = 0.2;
-    
-    const response = await fetch(`/assets/firmwares/${model.firm}`);
-    if (!response.ok) throw new Error(`Failed to fetch firmware: ${model.firm}`);
-    
-    const firmwareBlob = await response.blob();
-    progress.value = 0.5;
-
-    // 4. Write file to the selected directory
-    statusMessage.value = 'Flashing...';
-    // Create specific file handler
-    const fileHandle = await dirHandle.getFileHandle(model.firm, { create: true });
-    // Create a writable stream
-    const writable = await fileHandle.createWritable();
-    // Write contents
-    await writable.write(firmwareBlob);
-    // Close the file
-    await writable.close();
-
+    // Flashing complete 100%
     progress.value = 1;
     statusMessage.value = t('setup.complete');
+
+    // Give Pico enough time to reboot and re-appear as a serial device
+    // Electron: needs more time + OS driver detection
+    const waitTime = isElectron ? 8000 : 2500;
     
+    if (isElectron) {
+      statusMessage.value = t('setup.rebooting') || 'Rebooting...';
+    }
+
     setTimeout(() => {
         emit('install-complete');
-    }, 1500);
-    
+    }, waitTime);
+
   } catch (err: any) {
     console.error(err);
-    if (err.name === 'AbortError') {
-       statusMessage.value = t('setup.drive_error');
-    } else {
-       statusMessage.value = `${t('setup.copy_error')}: ${err.message}`;
-    }
-    // Allow user to go back
+    // If err message is a translation key
+    const msg = err.message || 'common.error';
+    statusMessage.value = t(msg).startsWith('setup.') || t(msg).startsWith('common.') 
+       ? t(msg) 
+       : `${t('common.error')}: ${msg}`;
+    
     setTimeout(() => {
         isInstalling.value = false;
         progress.value = 0;
@@ -227,7 +226,7 @@ const handleDismiss = () => {
           
           <div class="stepper-dots">
             <span :class="{ active: currentStep === 1 }"></span>
-            <span :class="{ active: currentStep === 2 }"></span>
+            <span :class="{ active: currentStep === 2, hidden: isElectron && currentStep === 2 }"></span>
             <span :class="{ active: currentStep === 3 }"></span>
           </div>
 
@@ -264,7 +263,7 @@ const handleDismiss = () => {
         <ion-card color="warning" v-if="progress < 1">
           <ion-card-content>
             <ion-icon :icon="warningOutline" slot="start"></ion-icon>
-            <strong>{{ t('common.notice') }}:</strong> {{ t('setup.installing') }}
+            <strong>{{ t('common.notice') }}:</strong> {{ t('setup.flashing') }}
           </ion-card-content>
         </ion-card>
 

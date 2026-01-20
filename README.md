@@ -6,7 +6,7 @@ Pico Editor - Both Block and Text based Coding Editor in Web/PC hybrid environme
 ![Main screen](./src/assets/screenshot_1.png)
 
 ## Web-based Demo
-[https://pico-editor.vercel.com](https://pico-editor.vercel.com)
+[https://pico-editor-demo.vercel.app](https://pico-editor-demo.vercel.app)
 
 ## Project Dev Env Setup
 ### Get souce codes

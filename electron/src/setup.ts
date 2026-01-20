@@ -12,6 +12,17 @@ import electronServe from 'electron-serve';
 import windowStateKeeper from 'electron-window-state';
 import { join } from 'path';
 
+// --- Debug Helper ---
+function logToRenderer(window: BrowserWindow | null, ...args: any[]) {
+  if (window && !window.isDestroyed()) {
+    const message = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
+    window.webContents.executeJavaScript(`console.log("%c[Main Process]", "color: cyan; font-weight: bold;", "${message.replace(/"/g, '\\"')}")`).catch(() => { });
+  }
+  // Also log to original stdout for terminal
+  console.log('[Main Process]', ...args);
+}
+// --------------------
+
 // Define components for a watcher to detect when the webapp is changed so we can reload in Dev mode.
 const reloadWatcher = {
   debouncer: null,
@@ -195,64 +206,36 @@ export class ElectronCapacitorApp {
 
     // Web Serial API support for Electron (Global Setup)
     session.defaultSession.on('select-serial-port', (event, portList, webContents, callback) => {
-      console.log('[Electron Serial]: Available ports:', portList);
-
-      // Add a listener to help with hot-plugging during the selection process
-      const portAddedListener = (e: any, port: any) => {
-        console.log('[Electron Serial]: Port added:', port);
-        if (port.vendorId && Number(port.vendorId) === 11914) {
-          event.preventDefault();
-          callback(port.portId);
-          webContents.session.removeListener('serial-port-added', portAddedListener);
-        }
-      };
-      webContents.session.on('serial-port-added', portAddedListener);
-
+      logToRenderer(this.MainWindow, '[Electron Serial]: Available ports:', portList);
       event.preventDefault();
 
-      // 1. Prioritize Raspberry Pi Pico (0x2E8A / 11914)
-      const picoPort = portList.find(p => p.vendorId && Number(p.vendorId) === 11914);
+      const PICO_VID = 11914; // 0x2E8A
+
+      // 이미 연결된 Pico가 있는지 확인
+      const picoPort = portList.find(p => p.vendorId && Number(p.vendorId) === PICO_VID);
       if (picoPort) {
-        console.log('[Electron Serial]: Pico found, automatically selecting:', picoPort.displayName);
+        logToRenderer(this.MainWindow, '[Electron Serial]: Pico found immediately, selecting:', picoPort.displayName);
         callback(picoPort.portId);
       } else {
-        // 2. Filter out Bluetooth and other non-Pico ports on macOS
-        // Common unwanted ports: Bluetooth-Incoming-Port, SOC, etc.
-        const filteredPorts = portList.filter(p => {
-          const name = (p.displayName || '').toLowerCase();
-          return !name.includes('bluetooth') && !name.includes('soc') && !name.includes('incoming-port');
-        });
-
-        if (filteredPorts.length > 0) {
-          console.log('[Electron Serial]: No Pico found, selecting first filtered port:', filteredPorts[0].displayName);
-          callback(filteredPorts[0].portId);
-        } else {
-          console.log('[Electron Serial]: No suitable ports found.');
-          // Return empty string to trigger NotFoundError in renderer, 
-          // which will be caught and shown as a nice message.
-          callback('');
-        }
+        logToRenderer(this.MainWindow, '[Electron Serial]: Pico not found immediately.');
+        callback('');
       }
-
-      // Cleanup listener after selection
-      setTimeout(() => {
-        webContents.session.removeListener('serial-port-added', portAddedListener);
-      }, 5000);
     });
 
-    session.defaultSession.setPermissionCheckHandler((_webContents, permission, _requestingOrigin) => {
-      if (permission === 'serial') return true;
-      return false;
-    });
+    // Web USB API support for Electron (Global Setup)
+    session.defaultSession.on('select-usb-device', (event, details, callback) => {
+      logToRenderer(this.MainWindow, '[Electron Serial]: USB Device Selection Triggered');
+      event.preventDefault(); // Intercept device selection popup
+      const selectedDevice = details.deviceList.find((device) => {
+        return device.vendorId === 11914; // 0x2e8a (Raspberry Pi)
+      });
 
-    session.defaultSession.setDevicePermissionHandler((details) => {
-      if (details.deviceType === 'serial') return true;
-      return false;
-    });
-
-    this.MainWindow.webContents.on('will-navigate', (event, _newURL) => {
-      if (!this.MainWindow.webContents.getURL().includes(this.customScheme)) {
-        event.preventDefault();
+      if (selectedDevice) {
+        logToRenderer(this.MainWindow, '[Electron Serial]: USB Device Auto-selected:', selectedDevice.deviceId);
+        callback(selectedDevice.deviceId);
+      } else {
+        logToRenderer(this.MainWindow, '[Electron Serial]: USB Device Not Found');
+        callback(''); // Not found device
       }
     });
 
@@ -282,8 +265,8 @@ export function setupContentSecurityPolicy(customScheme: string): void {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           electronIsDev
-            ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data:`
-            : `html <meta http-equiv="Content-Security-Policy" content="default-src ${customScheme}://* 'unsafe-inline' 'unsafe-eval' data: blob:;">`,
+            ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data: https://fonts.googleapis.com https://fonts.gstatic.com`
+            : `default-src ${customScheme}://* 'unsafe-inline' 'unsafe-eval' data: blob: https://fonts.googleapis.com https://fonts.gstatic.com`,
         ],
       },
     });

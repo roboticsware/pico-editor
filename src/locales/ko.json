@@ -16,8 +16,8 @@
     "disconnect": "연결 해제",
     "run": "실행 (REPL)",
     "stop": "중지",
-    "upload": "main.py 업로드",
-    "uploading": "업로드 중...",
+    "upload": "main.py 다운로드",
+    "uploading": "다운로드 중...",
     "lib_manager": "라이브러리 관리자"
   },
   "editor": {
@@ -91,9 +91,9 @@
   "setup": {
     "title": "새로운 Pico 시작하기",
     "step1_title": "1단계: 연결 준비",
-    "step1_desc": "<strong>BOOTSEL 버튼</strong>을 누른 상태에서 USB 케이블을 컴퓨터에 연결하세요.",
+    "step1_desc": "<strong>BOOTSEL 버튼</strong>을 누른 상태에서 USB 케이블을 컴퓨터에 연결하세요.<br/><br/><strong>그러나, 구입 후 첫 연결이면 본 과정은 건너뛰어도 됩니다.</strong>",
     "step2_title": "2단계: 드라이브 인식",
-    "step2_desc": "컴퓨터에 <strong>RPI-RP2</strong> 드라이브가 인식되었는지 확인해주세요.",
+    "step2_desc": "<strong>RPI-RP2 Boot</strong> 드라이브를 선택해 연결해주세요.",
     "step3_title": "3단계: 모델 선택 및 설치",
     "step3_desc": "사용 중인 Pico 모델을 선택하세요.",
     "select_model": "모델 선택",
@@ -104,13 +104,17 @@
       "pico2_w": "Pico 2 W"
     },
     "start_install": "펌웨어 설치 시작",
-    "installing": "펌웨어 복사 중... 케이블을 뽑지 마세요!",
     "complete": "설치 완료! Pico가 재부팅됩니다.",
     "success_btn": "완료하고 코딩 시작하기",
     "next": "다음",
     "prev": "이전",
     "select_drive": "RPI-RP2 드라이브 선택",
     "drive_error": "드라이브 선택 취소됨 또는 오류 발생",
-    "copy_error": "파일 복사 중 오류 발생"
+    "copy_error": "파일 복사 중 오류 발생",
+    "retry": "이전 과정을 다시 확인 후 재시도 해주세요.",
+    "already": "이미 펌웨어가 탑재된 피코입니다. 과정을 종료합니다.",
+    "flashing": "펌웨어 복사 중... 케이블을 뽑지 마세요!",
+    "rebooting": "재부팅 대기 중... 잠시만 기다려주세요.",
+    "downloading": "다운로드 중... ({percent}%)"
   }
 }

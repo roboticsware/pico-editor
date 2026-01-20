@@ -7,6 +7,7 @@ import unhandled from 'electron-unhandled';
 import { autoUpdater } from 'electron-updater';
 
 import { ElectronCapacitorApp, setupContentSecurityPolicy, setupReloadWatcher } from './setup';
+import { registerIpcHandlers } from './ipcHandlers';
 
 // Graceful handling of unhandled errors.
 unhandled();
@@ -22,7 +23,6 @@ const appMenuBarMenuTemplate: (MenuItemConstructorOptions | MenuItem)[] = [
 const capacitorFileConfig: CapacitorElectronConfig = getCapacitorElectronConfig();
 
 // Initialize our app. You can pass menu templates into the app here.
-// const myCapacitorApp = new ElectronCapacitorApp(capacitorFileConfig);
 const myCapacitorApp = new ElectronCapacitorApp(capacitorFileConfig, trayMenuTemplate, appMenuBarMenuTemplate);
 
 // If deeplinking is enabled then we will set it up here.
@@ -43,8 +43,39 @@ if (electronIsDev) {
   await app.whenReady();
   // Security - Set Content-Security-Policy based on whether or not we are in dev mode.
   setupContentSecurityPolicy(myCapacitorApp.getCustomURLScheme());
+  // Register IPC handlers
+  registerIpcHandlers();
   // Initialize our app, build windows, and load content.
   await myCapacitorApp.init();
+  // USB device permission and selection automation settings
+  const mainWindow = myCapacitorApp.getMainWindow();
+  const session = mainWindow.webContents.session;
+
+  // Consolidated Permission Check Handler
+  session.setPermissionCheckHandler((_webContents, permission, _requestingOrigin, details) => {
+    // 1. Serial Permission (Always allow)
+    if (permission === 'serial') return true;
+
+    // 2. USB Permission (Allow specific Vendor ID for Pico)
+    if (permission === 'usb' && (details as any).device?.vendorId === 11914) {
+      return true;
+    }
+
+    return false;
+  });
+
+  // Consolidated Device Permission Handler
+  session.setDevicePermissionHandler((details) => {
+    // 1. Serial Device (Always allow)
+    if (details.deviceType === 'serial') return true;
+
+    // 2. USB Device (Allow specific Vendor ID for Pico)
+    if (details.deviceType === 'usb' && (details.device as any).vendorId === 11914) {
+      return true;
+    }
+
+    return false;
+  });
 })();
 
 // Handle when all of our windows are close (platforms have their own expectations).

@@ -6,6 +6,8 @@
     "./capacitor.config.js"
   ],
   "compilerOptions": {
+    "sourceMap": true,
+    "inlineSources": true,
     "outDir": "./build",
     "importHelpers": true,
     "target": "ES2017",

@@ -13,3 +13,7 @@ contextBridge.exposeInMainWorld('ElectronUpdater', {
     onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', (_event, info) => callback(info)),
     quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
 });
+
+contextBridge.exposeInMainWorld('PicoOps', {
+    flashFirmware: (buffer: ArrayBuffer, filename: string) => ipcRenderer.invoke('flash-firmware', buffer, filename),
+});

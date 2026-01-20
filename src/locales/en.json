@@ -15,8 +15,8 @@
     "disconnect": "Disconnect",
     "run": "Run (REPL)",
     "stop": "Stop",
-    "upload": "Upload main.py",
-    "uploading": "Uploading...",
+    "upload": "Download main.py",
+    "uploading": "Downloading...",
     "lib_manager": "Library Manager"
   },
   "editor": {
@@ -97,9 +97,9 @@
   "setup": {
     "title": "Get Started with Pico",
     "step1_title": "Step 1: Preparation",
-    "step1_desc": "Connect USB cable while holding the <strong>BOOTSEL button</strong>.",
+    "step1_desc": "Connect USB cable while holding the <strong>BOOTSEL button</strong>.<br/><br/><strong>However, if this is your first time connecting since purchase, you can skip this step.</strong>",
     "step2_title": "Step 2: Drive Check",
-    "step2_desc": "Please indicate if the <strong>RPI-RP2</strong> drive fits your computer.",
+    "step2_desc": "Please select and connect the <strong>RPI-RP2 Boot</strong> drive.",
     "step3_title": "Step 3: Select Model & Install",
     "step3_desc": "Select your Pico model.",
     "select_model": "Select Model",
@@ -110,13 +110,17 @@
       "pico2_w": "Pico 2 W"
     },
     "start_install": "Start Firmware Installation",
-    "installing": "Copying firmware... Do not unplug!",
     "complete": "Installation Complete! Pico is rebooting.",
     "success_btn": "Finish & Start Coding",
     "next": "Next",
     "prev": "Previous",
     "select_drive": "Select RPI-RP2 Drive",
     "drive_error": "Drive selection cancelled or error occurred",
-    "copy_error": "Error copying file"
+    "copy_error": "Error copying file",
+    "retry": "Previous step needs to be checked again.",
+    "already": "This Pico is already installed with firmware. The process will be terminated.",
+    "flashing": "Flashing... Do not unplug!",
+    "rebooting": "Waiting for reboot... Please wait.",
+    "downloading": "Downloading... ({percent}%)"
   }
 }

@@ -11,6 +11,7 @@ export default defineConfig({
     vue(),
     vueDevTools(),
     VitePWA({
+      disable: process.env.CONF_PLATFORM === 'electron', // 일렉트론 빌드 시 비활성화
       registerType: 'autoUpdate',
       manifest: {
         name: 'Pico Block Coding',
@@ -38,4 +39,7 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  build: {
+    sourcemap: true, // 빌드 결과물에 소스맵 포함
+  }
 })

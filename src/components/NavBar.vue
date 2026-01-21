@@ -191,7 +191,12 @@ const handleConnectionToggle = async () => {
 
 // 실행 핸들러
 async function handleRunToggle() {
-  if (!codeStore.pythonCode) {
+  // 코드가 없거나, 기본 주석만 있는 경우 체크
+  const trimmedCode = codeStore.pythonCode.trim();
+  const isEmptyOrDefaultOnly = !trimmedCode || 
+    trimmedCode === t('editor.default_comment');
+
+  if (isEmptyOrDefaultOnly) {
     await alertCustom(t('common.notice'), t('msg.noCodeToRun'), '💡');
     return;
   }
@@ -293,11 +298,19 @@ async function handleUpload() {
       <ion-button 
         @click="handleRunToggle" 
         :color="serialStore.isRunning ? 'warning' : 'success'"
-        :disabled="!serialStore.isConnected || serialStore.isUploading"
+        :disabled="!serialStore.isConnected || serialStore.isUploading || serialStore.isInstallingLibrary"
         class="run-btn"
       >
-        <ion-icon slot="start" :icon="serialStore.isRunning ? square : play"></ion-icon>
-        <span class="ion-hide-lg-down">{{ serialStore.isRunning ? $t('navbar.stop') : $t('navbar.run') }}</span>
+        <div v-if="serialStore.isInstallingLibrary" class="custom-spinner">
+            <svg class="progress-icon" width="20px" height="20px" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="white" stroke-width="4" fill="none" opacity="0.3" />
+                <circle cx="12" cy="12" r="10" stroke="white" stroke-width="4" fill="none" class="progress-value" 
+                  transform="rotate(-90 12 12)"
+                  :style="{ strokeDasharray: 62.8, strokeDashoffset: 62.8 * (1 - serialStore.libraryInstallProgress / 100) }" />
+            </svg>
+        </div>
+        <ion-icon v-else slot="start" :icon="serialStore.isRunning ? square : play"></ion-icon>
+        <span class="ion-hide-lg-down">{{ serialStore.isInstallingLibrary ? `${serialStore.libraryInstallProgress}%` : (serialStore.isRunning ? $t('navbar.stop') : $t('navbar.run')) }}</span>
       </ion-button>
 
       <ion-button 
@@ -307,9 +320,16 @@ async function handleUpload() {
         :disabled="!serialStore.isConnected || serialStore.isUploading"
         class="upload-btn"
       >
-        <ion-spinner v-if="serialStore.isUploading" name="crescent" class="btn-spinner"></ion-spinner>
+        <div v-if="serialStore.isUploading" class="custom-spinner">
+            <svg class="progress-icon" width="20px" height="20px" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.3" />
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" class="progress-value" 
+                  transform="rotate(-90 12 12)"
+                  :style="{ strokeDasharray: 62.8, strokeDashoffset: 62.8 * (1 - serialStore.uploadProgress / 100) }" />
+            </svg>
+        </div>
         <ion-icon v-else slot="start" :icon="download"></ion-icon>
-        <span class="ion-hide-lg-down">{{ serialStore.isUploading ? $t('navbar.uploading') : $t('navbar.upload') }}</span>
+        <span class="ion-hide-lg-down">{{ serialStore.isUploading ? `${serialStore.uploadProgress}%` : $t('navbar.upload') }}</span>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
@@ -456,6 +476,21 @@ ion-button {
   width: 18px;
   height: 18px;
   margin-right: 6px;
+}
+
+.custom-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+}
+
+.progress-icon {
+  display: block;
+}
+
+.progress-value {
+  transition: stroke-dashoffset 0.3s ease;
 }
 
 

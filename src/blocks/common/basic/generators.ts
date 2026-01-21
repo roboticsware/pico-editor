@@ -2,6 +2,7 @@
 
 import * as Blockly from 'blockly';
 import { pythonGenerator } from 'blockly/python';
+import i18n from '@/i18n';
 
 export default function definePythonGenerators(P: typeof pythonGenerator) {
   // 자주 사용하는 상수를 짧게 선언
@@ -19,7 +20,7 @@ export default function definePythonGenerators(P: typeof pythonGenerator) {
   P.forBlock['random'] = () => 'import random\n';
   P.forBlock['pass'] = () => 'pass\n';
   P.forBlock['break'] = () => 'break\n';
-  P.forBlock['start_comment'] = () => '# Start code here\n';
+  P.forBlock['start_comment'] = () => `${i18n.global.t('editor.default_comment')}\n`;
 
   // --- 2. 기본 제어문 (Basic Control Structures) ---
   P.forBlock['while_true'] = (block: Blockly.Block) => `while True:\n${getBranch(block, 'DO')}`;

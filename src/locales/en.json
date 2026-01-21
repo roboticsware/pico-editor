@@ -20,6 +20,8 @@
     "lib_manager": "Library Manager"
   },
   "editor": {
+    "default_comment": "# Start code here",
+    "python_editor": "Python Editor",
     "saveToFile": "Save as (.py) file",
     "modified": "Modified",
     "modal": {

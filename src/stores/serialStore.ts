@@ -16,6 +16,8 @@ export const useSerialStore = defineStore('serial', () => {
   const isRunning = ref(false); // 실행 상태
   const isUploading = ref(false); // 업로드 상태
   const uploadProgress = ref(0); // 업로드 진행률
+  const isInstallingLibrary = ref(false); // 라이브러리 설치 상태
+  const libraryInstallProgress = ref(0); // 라이브러리 설치 진행률
   const errorLogs = ref<{ time: string, content: string }[]>([]); // 에러만 따로 보관
   const hasError = ref(false); // UI에서 에러 창을 띄울지 결정하는 플래그
   const installedFiles = ref<string[]>([]);
@@ -203,6 +205,19 @@ export const useSerialStore = defineStore('serial', () => {
     hasError.value = false;
   }
 
+  // Semver 비교 헬퍼 함수 (v1 < v2 이면 true)
+  function isVersionLower(v1: string, v2: string): boolean {
+    const parse = (v: string) => v.split('.').map(n => parseInt(n) || 0);
+    const ver1 = parse(v1);
+    const ver2 = parse(v2);
+
+    for (let i = 0; i < 3; i++) {
+      if ((ver1[i] || 0) < (ver2[i] || 0)) return true;
+      if ((ver1[i] || 0) > (ver2[i] || 0)) return false;
+    }
+    return false; // 같으면 업데이트 불필요
+  }
+
   // 라이브러리 자동 설치 확인 로직
   async function checkAndInstallLibraries(code: string) {
     // 1. 필요한 라이브러리 파악 (import 구문 파싱)
@@ -232,19 +247,24 @@ export const useSerialStore = defineStore('serial', () => {
         let msg = '';
 
         if (!remoteVer) {
+          // 설치되지 않음
           shouldInstall = true;
           msg = `Installing library: ${libDef.name} (${libDef.version})...`;
-        } else if (remoteVer !== libDef.version) {
-          // 단순 문자열 비교 (Semver 비교가 더 좋지만 일단 다르면 업데이트)
+        } else if (isVersionLower(remoteVer, libDef.version || '0.0.0')) {
+          // 피코 버전이 더 낮음 -> 업데이트 필요
           shouldInstall = true;
           msg = `Updating library: ${libDef.name} (${remoteVer} -> ${libDef.version})...`;
         }
+        // else: 피코 버전이 같거나 더 높으면 설치하지 않음
 
         if (shouldInstall) {
           // Toast/Log
           const logStore = useLogStore();
           logStore.addLog('system', msg);
           // TODO: Toast UI (via alertCustom or similar? For now silent + log)
+
+          isInstallingLibrary.value = true;
+          libraryInstallProgress.value = 0;
 
           await installLibrary(libDef);
 
@@ -256,6 +276,9 @@ export const useSerialStore = defineStore('serial', () => {
           // Write manifest back to Pico
           await uploadFile('.lib_manifest.json', newManifest, undefined, false);
           await new Promise(r => setTimeout(r, 200)); // 잠깐 대기
+
+          isInstallingLibrary.value = false;
+          libraryInstallProgress.value = 0;
         }
       }
     }
@@ -429,7 +452,6 @@ print(os.listdir())
   };
 
   const installLibrary = async (lib: Library) => {
-    isUploading.value = true;
     try {
       let content = lib.content;
       if (!content) {
@@ -456,13 +478,14 @@ with open('${lib.fileName}', 'w') as f:
       } else {
         // Serial: Upload library file
         await serial.uploadFile(lib.fileName, content, (p) => {
-          uploadProgress.value = p;
+          libraryInstallProgress.value = p;
         }, false); // 라이브러리 설치 시에는 리셋하지 않음
 
         await syncFileList();
       }
-    } finally {
-      isUploading.value = false;
+    } catch (e) {
+      console.error("Library installation failed:", e);
+      throw e;
     }
   };
 
@@ -488,7 +511,9 @@ os.remove('${fileName}')
   };
 
   return {
-    isConnected, isRunning, isUploading, uploadProgress, errorLogs, hasError, clearErrorsLogs: clearErrorLogs, connect, disconnect, upload, run, stop,
+    isConnected, isRunning, isUploading, uploadProgress,
+    isInstallingLibrary, libraryInstallProgress,
+    errorLogs, hasError, clearErrorsLogs: clearErrorLogs, connect, disconnect, upload, run, stop,
     installedFiles,
     libraries,
     isSyncing,

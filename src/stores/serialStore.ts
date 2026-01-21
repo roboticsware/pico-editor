@@ -162,6 +162,22 @@ export const useSerialStore = defineStore('serial', () => {
               console.log('[Serial Raw]:', data);
             }
 
+            // REPL 프롬프트나 제어 문자 제거 (사용자에게 보여줄 깔끔한 텍스트)
+            const cleanData = data
+              .replace(/\x1b\[[0-9;]*m/g, '') // ANSI 색상 코드 제거
+              .replace(/>>>\s*/g, '') // REPL 프롬프트 제거
+              .replace(/\r/g, '') // 캐리지 리턴 제거
+              .trim();
+
+            // 의미있는 내용이 있으면 사용자 터미널에 표시
+            if (cleanData && cleanData.length > 0) {
+              // 'OK' 같은 REPL 내부 응답은 제외
+              if (!cleanData.match(/^(OK|ok|raw REPL)/i)) {
+                const logStore = useLogStore();
+                logStore.addLog('output', cleanData);
+              }
+            }
+
             // 에러 키워드 감지 (MicroPython 에러 패턴)
             const lowerData = data.toLowerCase();
             if (lowerData.includes('error') || lowerData.includes('traceback')) {

@@ -24,7 +24,8 @@
         ]
       }
     ],
-    "icon": "assets/appIcon.ico"
+    "icon": "assets/appIcon.ico",
+    "publish": ["github"]
   },
   "mac": {
     "category": "public.app-category.education",
@@ -38,5 +39,13 @@
       "deb"
     ],
     "category": "Education"
-  }
+  },
+  "publish": [
+      {
+        "provider": "github",
+        "owner": "roboticsware",
+        "repo": "pico-editor",
+        "releaseType": "release"
+      }
+    ]
 }

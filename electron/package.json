@@ -1,6 +1,6 @@
 {
   "name": "pico-editor",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Pico Editor - Both Block and Text based Coding Editor in Web/PC hybrid environment for Raspberry Pi Pico with Blockly and Python support.",
   "author": {
     "name": "Roboticsware",
@@ -14,6 +14,7 @@
   "main": "build/src/index.js",
   "scripts": {
     "build": "tsc && electron-rebuild",
+    "dist": "npm run build && electron-builder build --win -c ./electron-builder.config.json -p always",
     "electron:start-live": "node ./live-runner.js",
     "electron:start": "npm run build && electron --inspect=5858 ./",
     "electron:pack": "npm run build && electron-builder build --dir -c ./electron-builder.config.json",

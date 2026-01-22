@@ -103,9 +103,12 @@
       "pico2": "Pico 2",
       "pico2_w": "Pico 2 W"
     },
+    "step5_title": "4단계: 시리얼 포트 인식",
+    "step5_desc": "<strong>시리얼 포트</strong>를 선택해 연결해주세요.",
     "start_install": "펌웨어 설치 시작",
-    "complete": "설치 완료! Pico가 재부팅됩니다.",
-    "success_btn": "완료하고 코딩 시작하기",
+    "f_complete": "펌웨어 설치 완료!",
+    "l_complete": "라이브러리 설치 완료! Pico가 리셋됩니다.",
+    "success_btn": "모드 선택하고 코딩 시작하기",
     "next": "다음",
     "prev": "이전",
     "select_drive": "RPI-RP2 드라이브 선택",
@@ -115,6 +118,9 @@
     "already": "이미 펌웨어가 탑재된 피코입니다. 과정을 종료합니다.",
     "flashing": "펌웨어 복사 중... 케이블을 뽑지 마세요!",
     "rebooting": "재부팅 대기 중... 잠시만 기다려주세요.",
-    "proress": "진행 중... ({percent}%)"
+    "progress": "진행 중...",
+    "library_install_prompt": "이어서 라이브러리를 설치합니다",
+    "port_selection_guide": "재부팅이 완료되었습니다. Pico 포트를 선택해주세요.",
+    "library_installing": "라이브러리 설치 중..."
   }
 }

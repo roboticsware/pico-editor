@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { 
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, 
@@ -11,14 +11,16 @@ import { flashOutline, warningOutline, checkmarkCircle, arrowForward } from 'ion
 // Import local assets
 import step1Img from '@/assets/step1.png';
 import step2Img from '@/assets/step2.png';
+import step5Img from '@/assets/step5.png';
 import picoImg from '@/assets/rp2-pico.thumb.png';
 import picoWImg from '@/assets/rp2-pico-w.thumb.png';
 import pico2Img from '@/assets/rp2-pico2.thumb.jpg';
 import pico2WImg from '@/assets/rp2-pico2-w.thumb.jpg';
 import { useDeviceStore } from '@/stores/deviceStore';
 import { alertCustom } from '@/services/modal-confirm';
-import { flashFirmware } from '@/utils/firmware-flash';
+import { flashFirmware, injectLibraries } from '@/utils/firmware-flash';
 import { Capacitor } from '@capacitor/core';
+import { serial } from '@/utils/serial';
 
 const props = defineProps<{ isOpen: boolean }>();
 const emit = defineEmits(['close', 'install-complete']);
@@ -28,9 +30,10 @@ const { t } = useI18n();
 const isElectron = Capacitor.getPlatform() === 'electron';
 const currentStep = ref(1);
 const selectedModel = ref<string>('');
-const isInstalling = ref(false);
+const isFlashing = ref(false);
 const progress = ref(0);
 const statusMessage = ref('');
+const currentModelInfo = ref<{ id: string; isWireless: boolean } | null>(null);
 
 const models = computed(() => [
   { id: 'pico', name: 'Pico', img: picoImg, firm: 'RPI_PICO-20251209-v1.27.0.uf2' },
@@ -39,17 +42,33 @@ const models = computed(() => [
   { id: 'pico2_w', name: 'Pico 2 W', img: pico2WImg, firm: 'RPI_PICO2_W-20251209-v1.27.0.uf2' },  
 ]);
 
+// Reset state when modal opens
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen) {
+    currentStep.value = 1;
+    selectedModel.value = '';
+    isFlashing.value = false;
+    progress.value = 0;
+    statusMessage.value = '';
+    currentModelInfo.value = null;
+  }
+});
+
 const nextStep = async () => {
   let next = currentStep.value + 1;
   // In Electron, skip Step 2 (Drive Check) as it's auto-detected
   if (isElectron && next === 2) {
     next = 3;
   }
+  // In Web, skip Step 4 (Library Install Prompt - Electron only)
+  if (!isElectron && next === 4) {
+    next = 5;
+  }
 
-  if (next <= 3) {
+  if (next <= 5) {
     currentStep.value = next;
 
-    if (currentStep.value === 3) {
+    if (currentStep.value === 3) { // USB drive selection
       await deviceStore.scanPicoStatus();
       if (deviceStore.statusType === 'retry') {
         await alertCustom(t('common.error'), t('setup.retry'), '❌');
@@ -57,7 +76,7 @@ const nextStep = async () => {
         prevStep();
       } else if (deviceStore.statusType === 'already') {
         await alertCustom(t('common.error'), t('setup.already'), '❌');
-        emit('close');
+        handleDismiss();
       }
     }
   }
@@ -69,6 +88,10 @@ const prevStep = () => {
   if (isElectron && prev === 2) {
     prev = 1;
   }
+  // In Web, skip Step 4
+  if (!isElectron && prev === 4) {
+    prev = 3;
+  }
   
   if (prev >= 1) currentStep.value = prev;
 };
@@ -77,53 +100,96 @@ const startInstallation = async () => {
   const model = models.value.find(m => m.id === selectedModel.value);
   if (!model) return;
 
-  isInstalling.value = true;
-  statusMessage.value = t('setup.progress', { percent: 0 }); // reset
+  isFlashing.value = true;
+  statusMessage.value = t('setup.progress'); // reset
   progress.value = 0.05;
 
   try {
+    // Determine if model is wireless
+    const isWireless = model.id === 'pico_w' || model.id === 'pico2_w';
+    currentModelInfo.value = { id: model.id, isWireless };
+    
     await flashFirmware(model.firm, (status) => {
        progress.value = status.progress;
-       // Check if status is a key or raw text. util sends keys now.
-       // Some statuses might need params (percent) in UI, but util sends generic simple keys.
-       // We can check the key and add params if needed, or just translate.
-       // 'setup.flashing' etc.
        statusMessage.value = t(status.status); 
     });
 
-    // Flashing complete 100%
-    progress.value = 1;
-    statusMessage.value = t('setup.complete');
-
-    // Give Pico enough time to reboot and re-appear as a serial device
-    // Electron: needs more time + OS driver detection
-    const waitTime = isElectron ? 8000 : 2500;
-    
+    // Flashing complete at 60%
+    // Show platform-specific intermediate screen
+    isFlashing.value = false;
     if (isElectron) {
-      statusMessage.value = t('setup.rebooting') || 'Rebooting...';
+      currentStep.value = 4;
+    } else { // web
+      currentStep.value = 5;
     }
-
-    setTimeout(() => {
-        emit('install-complete');
-    }, waitTime);
 
   } catch (err: any) {
     console.error(err);
     // If err message is a translation key
     const msg = err.message || 'common.error';
-    statusMessage.value = t(msg).startsWith('setup.') || t(msg).startsWith('common.') 
+    statusMessage.value = (msg.startsWith('setup.') || msg.startsWith('common.'))
        ? t(msg) 
        : `${t('common.error')}: ${msg}`;
     
     setTimeout(() => {
-        isInstalling.value = false;
+        isFlashing.value = false;
         progress.value = 0;
     }, 3000);
   }
 };
 
+const handleLibraryInstall = async () => {
+  isFlashing.value = true;
+  
+  try {
+    if (!currentModelInfo.value) return;
+    
+    statusMessage.value = t('setup.library_installing');
+
+    // Web: Connect serial first (User action required)
+    if (!isElectron) {
+      // Trigger port picker
+      // If user cancels, serial.connect() throws an error (handled in catch)
+      const connected = await serial.connect();
+      if (!connected) return;
+    }
+    
+    await injectLibraries(currentModelInfo.value, (status: any) => {
+      progress.value = status.progress;
+      statusMessage.value = t(status.status);
+    }, isElectron);
+    
+    // Complete (100%)
+    progress.value = 1;
+    statusMessage.value = t('setup.l_complete');
+    
+    setTimeout(() => {
+      emit('install-complete');
+    }, 1500);
+    
+  } catch (err: any) {
+    console.error(err);
+    const msg = err.message || t('common.error');
+
+    if (!isElectron) {
+      // Web: Show alert and immediately revert to selection screen (e.g. cancelled)
+      isFlashing.value = false;
+      progress.value = 0;
+      statusMessage.value = '';
+      await alertCustom(t('common.error'), msg, '❌');
+    } else {
+      // Electron: Show error status then reset
+      statusMessage.value = `${t('common.error')}: ${msg}`;
+      setTimeout(() => {
+        isFlashing.value = false;
+        progress.value = 0;
+      }, 3000);
+    }
+  }
+};
+
 const handleDismiss = () => {
-  if (!isInstalling.value || progress.value >= 1) {
+  if (!isFlashing.value || progress.value >= 1) {
     // Reset steps when closed
     currentStep.value = 1;
     selectedModel.value = '';
@@ -133,19 +199,18 @@ const handleDismiss = () => {
 </script>
 
 <template>
-  <ion-modal :is-open="isOpen" :backdrop-dismiss="!isInstalling" @didDismiss="handleDismiss" class="setup-modal">
+  <ion-modal :is-open="isOpen" :backdrop-dismiss="!isFlashing" @didDismiss="handleDismiss" class="setup-modal">
     <ion-header>
       <ion-toolbar color="primary">
         <ion-title>{{ t('setup.title') }}</ion-title>
-        <ion-buttons slot="end" v-if="!isInstalling">
+        <ion-buttons slot="end" v-if="!isFlashing">
           <ion-button @click="emit('close')">{{ t('common.close') }}</ion-button>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
 
     <ion-content class="ion-padding">
-      <div v-if="!isInstalling" class="guide-container">
-        
+      <div v-if="!isFlashing" class="guide-container">
         <!-- Step 1: Preparation -->
         <div v-show="currentStep === 1" class="step-view">
           <ion-card class="step-card">
@@ -161,7 +226,7 @@ const handleDismiss = () => {
           </ion-card>
         </div>
 
-        <!-- Step 2: Confirmation -->
+        <!-- Step 2: USB Drive selection -->
         <div v-show="currentStep === 2" class="step-view">
           <ion-card class="step-card">
             <ion-card-header>
@@ -176,7 +241,7 @@ const handleDismiss = () => {
           </ion-card>
         </div>
 
-        <!-- Step 3: Model Selection & Install -->
+        <!-- Step 3: Model Selection & Flashing -->
         <div v-show="currentStep === 3" class="step-view">
           <ion-card class="step-card highlight-step">
             <ion-card-header>
@@ -214,6 +279,44 @@ const handleDismiss = () => {
           </ion-card>
         </div>
 
+        <!-- Step 4: Electron Library Install Prompt -->
+        <div v-show="currentStep === 4" class="step-view">
+          <ion-card class="step-card">
+            <ion-card-header>
+              <ion-badge color="success">{{ t('setup.f_complete') }}</ion-badge>
+            </ion-card-header>
+            <ion-card-content class="step-content ion-text-center">
+              <div class="status-icon-box">
+                <ion-icon :icon="checkmarkCircle" color="success" size="large"></ion-icon>
+              </div>
+              <p class="ion-margin-top">{{ t('setup.library_install_prompt') }}</p>
+              
+              <ion-button expand="block" color="primary" class="ion-margin-top" @click="handleLibraryInstall">
+                {{ t('common.ok') }}
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+        </div>
+
+        <!-- Step 5: Web Port Selection -->
+        <div v-show="currentStep === 5" class="step-view">
+          <ion-card class="step-card">
+            <ion-card-header>
+              <ion-badge color="tertiary">{{ t('setup.step5_title') }}</ion-badge>
+            </ion-card-header>
+            <ion-card-content class="step-content">
+              <div class="img-wrapper">
+                <img :src="step5Img" alt="Select Port" />
+              </div>
+              <p v-html="t('setup.step5_desc')"></p>
+              <ion-button expand="block" class="ion-margin-top" @click="handleLibraryInstall">
+                  {{ t('setup.next') }}
+                  <ion-icon slot="end" :icon="arrowForward" />
+              </ion-button>
+            </ion-card-content>
+          </ion-card>
+        </div>
+
         <!-- Navigation Buttons -->
         <div class="nav-buttons">
           <ion-button 
@@ -226,8 +329,10 @@ const handleDismiss = () => {
           
           <div class="stepper-dots">
             <span :class="{ active: currentStep === 1 }"></span>
-            <span :class="{ active: currentStep === 2, hidden: isElectron && currentStep === 2 }"></span>
+            <span :class="{ active: currentStep === 2 }" v-if="!isElectron"></span>
             <span :class="{ active: currentStep === 3 }"></span>
+            <span :class="{ active: currentStep === 4 }" v-if="isElectron"></span>
+            <span :class="{ active: currentStep === 5 }" v-if="!isElectron"></span>
           </div>
 
           <ion-button 
@@ -241,7 +346,6 @@ const handleDismiss = () => {
              <!-- Spacer -->
           </ion-button>
         </div>
-
       </div>
 
       <!-- Installation Progress View -->
@@ -267,7 +371,7 @@ const handleDismiss = () => {
           </ion-card-content>
         </ion-card>
 
-        <ion-button v-if="progress >= 1" expand="block" color="primary" @click="emit('close')">
+        <ion-button v-if="progress >= 1" expand="block" color="primary" @click="handleDismiss">
           {{ t('setup.success_btn') }}
         </ion-button>
       </div>

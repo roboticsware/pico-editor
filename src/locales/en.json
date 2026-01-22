@@ -110,9 +110,12 @@
       "pico2": "Pico 2",
       "pico2_w": "Pico 2 W"
     },
+    "step5_title": "Step 4: Serial Port Recognition",
+    "step5_desc": "<strong>Serial Port</strong> to be selected.",
     "start_install": "Start Firmware Installation",
-    "complete": "Installation Complete! Pico is rebooting.",
-    "success_btn": "Finish & Start Coding",
+    "f_complete": "Firmware Installation Complete!",
+    "l_complete": "Library Installation Complete! Pico is resetting.",
+    "success_btn": "Select Mode & Start Coding",
     "next": "Next",
     "prev": "Previous",
     "select_drive": "Select RPI-RP2 Drive",
@@ -122,6 +125,9 @@
     "already": "This Pico is already installed with firmware. The process will be terminated.",
     "flashing": "Flashing... Do not unplug!",
     "rebooting": "Waiting for reboot... Please wait.",
-    "proress": "proress... ({percent}%)"
+    "progress": "In progress...",
+    "library_install_prompt": "Now installing libraries",
+    "port_selection_guide": "Reboot complete. Please select the Pico port.",
+    "library_installing": "Installing libraries..."
   }
 }

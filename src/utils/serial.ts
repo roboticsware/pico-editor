@@ -1,328 +1,72 @@
-// Pico(MicroPython)와의 시리얼 통신을 위한 유틸리티
-import i18n from '@/i18n';
-import { alertCustom } from '@/services/modal-confirm';
+// Re-export ConnectionManager as the new serial utility
+import { connectionManager } from './connection/ConnectionManager';
 
-export class PicoSerial {
-  private port: SerialPort | null = null;
-  private writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
-  private reader: ReadableStreamDefaultReader | null = null;
-  private logListener: ((data: string) => void) | null = null;
-  private disconnectListener: (() => void) | null = null;
+// Compatibility export
+export const serial = connectionManager;
 
-  constructor() {
-    if (typeof navigator !== 'undefined' && 'serial' in navigator) {
-      navigator.serial.addEventListener('disconnect', (event) => {
-        // 현재 연결된 포트가 분리되었는지 확인
-        if (this.port === (event as any).port || this.port === event.target) {
-          console.log('[Serial] Device disconnected unexpectedly.');
-          this.handleUnexpectedDisconnect();
-        }
-      });
-    }
+// If anyone imports "PicoSerial" type from here (though unlikely used as value is main export)
+export type PicoSerial = typeof connectionManager;
+
+export const checkUsbConnection = async () => {
+  try {
+    // 이제 설정 덕분에 이전에 승인된 포트뿐만 아니라 
+    // 현재 연결된 포트들을 가져올 수 있습니다.
+    const ports = await navigator.serial.getPorts();
+
+    // Pico 장치 찾기 (Vendor ID: 0x2e8a)
+    const picoPort = ports.find(port => {
+      const { usbVendorId } = port.getInfo();
+      return usbVendorId === 11914 || usbVendorId === 0x2e8a;
+    });
+
+    return !!picoPort;
+  } catch (err) {
+    console.error("포트 확인 중 오류:", err);
+    return false;
   }
+};
 
-  private handleUnexpectedDisconnect() {
-    // 내부 상태 초기화 (이미 연결이 끊겼으므로 port.close() 호출은 생략할 수 있음)
-    this.reader = null;
-    this.writer = null;
-    this.port = null;
-    if (this.disconnectListener) {
-      this.disconnectListener();
-    }
+// Helpers for detecting Pico connectivity by WiFi
+export const isWebReplAvailable = async (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const ws = new WebSocket('ws://192.168.4.1:8266');
+    ws.binaryType = 'arraybuffer';
+
+    // Set a short timeout (e.g. 1000ms)
+    const timer = setTimeout(() => {
+      ws.close();
+      resolve(false);
+    }, 1200);
+
+    ws.onopen = () => {
+      clearTimeout(timer);
+      ws.close();
+      resolve(true);
+    };
+
+    ws.onerror = () => {
+      clearTimeout(timer);
+      // resolve(false) happens on close or we assume failure
+      resolve(false);
+    };
+  });
+};
+
+export const getPicoHostname = async (): Promise<string | null> => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch('http://192.168.4.1:80', {
+      signal: controller.signal,
+      method: 'GET',
+      cache: 'no-store'
+      // mode: 'cors' // Optional depending on server config
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.hostname || null;
+  } catch {
+    return null;
   }
-
-  setDisconnectListener(callback: () => void) {
-    this.disconnectListener = callback;
-  }
-
-  setLogListener(callback: (data: string) => void) {
-    this.logListener = callback;
-  }
-
-  // 1. 포트 요청 및 연결
-  async connect(): Promise<boolean> {
-    const { t } = i18n.global;
-    try {
-      // 1. 브라우저 지원 여부 확인
-      if (!('serial' in navigator)) {
-        await alertCustom(t('common.error'), t('msg.serialNotSupported'), '❌');
-        return false;
-      }
-      // 2. 포트 요청 (반드시 사용자 클릭 이벤트 내부여야 함)
-      // @ts-ignore: Web Serial API 타입 미지원 대비
-      this.port = await navigator.serial.requestPort();
-
-      if (!this.port) {
-        throw new Error(t('msg.noDeviceSelected'));
-      }
-
-      await this.port.open({ baudRate: 115200 });
-
-      if (this.port.readable) {
-        this.reader = this.port.readable.getReader();
-      }
-      if (this.port.writable) {
-        this.writer = this.port.writable.getWriter();
-      }
-      return true;
-
-    } catch (error: any) {
-      if (error.name === 'NotFoundError') {
-        throw new Error(t('msg.noDeviceFound'));
-      } else if (error.name === 'SecurityError') {
-        throw new Error(t('msg.securityError'));
-      } else if (error.message.includes('Failed to open serial port')) {
-        throw new Error(t('msg.portAlreadyOpen'));
-      } else {
-        throw error; // 기타 예상치 못한 에러는 그대로 던짐
-      }
-    }
-  }
-
-  // 리더 자원을 안전하게 해제하는 별도 함수
-  async cleanupReader() {
-    if (this.reader) {
-      try {
-        this.reader.releaseLock();
-      } catch (e) { /* 이미 잠금 해제된 경우 무시 */ }
-      this.reader = null;
-    }
-  }
-
-  private incomingBuffer: string = "";
-
-  async startListening() {
-    if (!this.reader) return;
-
-    const decoder = new TextDecoder();
-    try {
-      while (true) {
-        const { value, done } = await this.reader.read();
-        if (done) break;
-        if (value) {
-          const text = decoder.decode(value);
-          this.incomingBuffer += text; // 버퍼에 누적
-          if (this.logListener) {
-            this.logListener(text);
-          }
-        }
-      }
-    } catch (error: any) {
-      // 기기 재부팅을 위한 machine.reset() 등으로 인한 연결 끊김은 정상으로 처리
-      if (error.message.includes('lost') || error.name === 'NetworkError') {
-        console.log("Device reset detected (Network (lost) Error). Cleaning up...");
-      } else {
-        console.error("Listening error:", error);
-      }
-    } finally {
-      // 에러가 나든 정상 종료되든 리더를 닫아줌
-      await this.cleanupReader();
-    }
-  }
-
-  // 2. 텍스트 전송 (명령어 전송용)
-  async write(text: string) {
-    if (!this.writer) return;
-    const encoder = new TextEncoder();
-    await this.writer.write(encoder.encode(text));
-  }
-
-  // 3. 코드 실행 명령 (REPL 소프트 리셋 및 실행)
-  async runInREPL(code: string) {
-    if (!this.writer) return;
-
-    // Ctrl+C: 현재 실행 중인 기존 프로그램 중단
-    await this.write('\x03'); // Keyboard Interrupt - 현재 실행 중인 루프를 즉시 멈춥니다.
-    await new Promise(r => setTimeout(r, 500)); // 약간의 대기 후 코드 전송
-
-    // Ctrl+A: Raw REPL 모드 진입 (대량의 코드를 보낼 때 안정적임)
-    await this.write('\x01');
-    await new Promise(r => setTimeout(r, 100));
-
-    // 실제 코드 전송
-    await this.write(code);
-
-    // Ctrl+D: 실행 (Soft Reset)
-    await this.write('\x04'); // Soft Reset - HW 재부팅없이 새로 시작하는 것처럼 초기화 한 후 전송된 코드 실행
-  }
-
-  async uploadFile(filename: string, code: string, onProgress?: (p: number) => void, shouldReset: boolean = false) {
-    if (!this.writer) return;
-
-    try {
-      // 1. 현재 실행 중인 코드 중단 및 Raw 모드 진입
-      await this.write('\x03\x03\x01');
-      await new Promise(r => setTimeout(r, 200));
-
-      // 2. 파일 열기 명령 전송 (먼저 파일을 쓰기 모드로 엽니다)
-      await this.write(`f = open('${filename}', 'wb')\nimport ubinascii, os, machine\n\x04`);
-      await this.readResponse(); // OK 대기
-
-      // 3. 데이터를 작게 쪼개서 파일에 직접 쓰기
-      const encoder = new TextEncoder();
-      const rawData = encoder.encode(code);
-      const chunkSize = 512; // 한 번에 처리할 바이트 크기
-
-      for (let i = 0; i < rawData.length; i += chunkSize) {
-        const chunk = rawData.slice(i, i + chunkSize);
-        // Uint8Array를 Base64 문자열로 변환 (작은 조각이므로 btoa 사용 가능)
-        const b64Chunk = btoa(String.fromCharCode(...chunk));
-
-        // 이 조각을 바로 파일에 쓰는 명령 전송
-        await this.write(`f.write(ubinascii.a2b_base64('${b64Chunk}'))\n\x04`);
-        await this.readResponse(); // 각 조각이 써질 때마다 확인 (속도 조절 및 안정성)
-
-        if (onProgress) {
-          onProgress(Math.round(((i + chunk.length) / rawData.length) * 100));
-        }
-      }
-
-      // 4. 버퍼 비우기, 파일 동기화 및 닫기
-      // os.sync()를 호출해야 실제 Flash 메모리에 물리적으로 저장
-      await this.write(`f.flush()\nos.sync()\nf.close()\n\x04`);
-      await this.readResponse();
-
-      // 5. 리셋 여부 확인 및 실행
-      if (shouldReset) {
-        console.log("리셋 명령 전송 중...");
-        await this.write(`machine.reset()\n\x04`);
-        // 리셋 시에는 연결이 끊기므로 응답을 기다리지 않고 종료할 수 있습니다.
-      } else {
-        // 리셋하지 않을 경우 일반 모드로 복귀 (Ctrl+B)
-        await this.write('\x02');
-      }
-
-      console.log(`[${filename}] 업로드 완료! (리셋: ${shouldReset})`);
-    } catch (err) {
-      console.error("업로드 중 오류 발생:", err);
-      throw err;
-    }
-  }
-
-  async disconnect() {
-    try {
-      // 1. 읽기 스트림이 있다면 중단시킴
-      if (this.reader) {
-        await this.reader.cancel(); // 읽기 루프를 즉시 종료시킴
-        if (this.reader) {
-          this.reader.releaseLock();  // 스트림의 잠금을 해제
-          this.reader = null;
-        }
-      }
-
-      // 2. 출력 스트림(Writer)이 있다면 마찬가지로 처리
-      if (this.writer) {
-        this.writer.releaseLock();
-        this.writer = null;
-      }
-
-      // 3. 모든 스트림이 해제된 후 포트를 닫음
-      if (this.port) {
-        await this.port.close();
-        this.port = null;
-      }
-
-      console.log("포트가 안전하게 닫혔습니다.");
-    } catch (error) {
-      console.error("연결 해제 중 오류:", error);
-    }
-  }
-
-
-  // 파이썬 명령을 실행하고 그 출력 결과(stdout)를 반환합니다.
-  async executeCommand(command: string): Promise<string> {
-    if (!this.port || !this.writer) throw new Error("Not connected");
-
-    try {
-      // 1. 실행 중인 루프 중단 (Ctrl+C)
-      // 두 번 정도 보내주는 것이 확실합니다.
-      await this.write("\x03\x03");
-      // 잠시 대기하여 피코가 중단될 시간을 줍니다.
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // 2. Raw REPL 모드 진입 (Ctrl+A)
-      await this.write("\x01");
-      await new Promise(resolve => setTimeout(resolve, 50));
-
-      // 3. 명령 전송 + 실행 명령 (Ctrl+D)
-      await this.write(command + "\x04");
-
-      // 4. 결과 읽기
-      let response = await this.readResponse();
-
-      // 5. 응답 정리 (OK 제거 및 결과 추출)
-      // Raw REPL은 성공 시 OK가 먼저 오고, 결과값 뒤에 \x04가 붙습니다.
-      if (response.startsWith("OK")) {
-        response = response.substring(2); // 'OK' 제거
-      }
-      response = (response.split("\x04")[0] || "").trim();
-
-      // 6. 일반 REPL 모드 복귀 (Ctrl+B)
-      await this.write("\x02");
-
-      return response;
-    } catch (err) {
-      console.error("명령 실행 실패:", err);
-      throw err;
-    }
-  }
-
-  private async readResponse(): Promise<string> {
-    this.incomingBuffer = ""; // 버퍼 비우고 대기
-
-    // 최대 1초 동안 MicroPython REPL 종료 기호(>>> )가 나올 때까지 대기
-    const startTime = Date.now();
-    while (Date.now() - startTime < 1000) {
-      if (this.incomingBuffer.includes(">>> ")) {
-        break;
-      }
-      await new Promise(r => setTimeout(r, 50));
-    }
-
-    return this.incomingBuffer;
-  }
-
-  // 파이썬 리스트 문자열 파싱 로직
-  async parsePythonList(str: string): Promise<string[]> {
-    const match = str.match(/\[(.*?)\]/);
-    if (!match || !match[1]) return [];
-    return match[1].split(',').map(s => s.trim().replace(/['"]/g, '')).filter(s => s);
-  };
-
-  // 피코 보드의 파일 목록 가져오기
-  async getFileList(): Promise<string[]> {
-    const command = "import os; print(os.listdir())\r\n";
-    const result = await this.executeCommand(command); // 명령 실행 후 결과 문자열 파싱
-    // 결과 예시: "['main.py', 'pico_utils.py']" -> 배열로 변환 로직 필요
-    return this.parsePythonList(result);
-  }
-
-  // 파일 삭제
-  async deleteFile(filename: string) {
-    // MicroPython에서 os.remove('파일명') 명령을 실행합니다.
-    await this.executeCommand(`import os; os.remove('${filename}')`);
-  }
-
-  // 파일 읽기
-  async readFile(filename: string): Promise<string | null> {
-    // 백틱(`)을 사용하여 줄바꿈과 들여쓰기를 명확히 합니다.
-    // 코드 앞에 공백이 생기지 않도록 왼쪽 벽에 붙여서 작성하는 것이 중요합니다.
-    const command = `
-try:
-    with open('${filename}', 'r') as f:
-        print(f.read())
-except OSError:
-    print("##ENOENT##")
-`;
-    const result = await this.executeCommand(command);
-    if (result.includes("##ENOENT##")) {
-      return null;
-    }
-    // Remove extra prompts or newlines just in case (simple cleaning)
-    // The exact cleaning might depend on REPL echo behavior, 
-    // but executeCommand usually returns the output.
-    return result.trim();
-  }
-}
-
-export const serial = new PicoSerial();
+};

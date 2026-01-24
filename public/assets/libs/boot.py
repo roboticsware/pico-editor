@@ -1,42 +1,60 @@
-import network
-import binascii
-import webrepl
-import time
+import network, binascii, webrepl, machine, socket, _thread, time
 
-def setup_ap_mode():
-    # 1. 기기 고유 ID 추출 (MAC 주소 뒷자리 4자리)
-    ap_if = network.WLAN(network.AP_IF)
-    mac = binascii.hexlify(ap_if.config('mac'), ':').decode()
-    unique_id = mac.split(':')[-2] + mac.split(':')[-1]
+# 전역 변수
+hostname = "pico-device"
 
-    # 2. 고유 SSID 및 호스트네임 설정 (pico-XXXX)
-    hostname = f"pico-{unique_id}"
-    password = f"pwd-{unique_id}" # 비밀번호 (최소 8자 이상, 없애려면 '' 입력)
+def info_server_thread():
+    global hostname
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        s.bind(('0.0.0.0', 80))
+        s.listen(1)
+        while True:
+            cl = None
+            try:
+                cl, addr = s.accept()
+                cl.settimeout(1.0)
+                request = cl.recv(512)
+                
+                # Pico W에서 전압 측정(ADC3)은 WiFi 칩셋(CS)과 핀을 공유하므로
+                # WiFi 연결 중 측정 시 연결이 끊어질 수 있습니다.
+                # 따라서 안정성을 위해 전압 측정 기능을 비활성화합니다.
+                voltage = 0.0
+                percentage = -1
+                
+                # HTTP 응답 구성 (Connection: close 필수)
+                body = '{"hostname": "%s", "battery": %d, "voltage": %.2f}' % (hostname, percentage, voltage)
+                response = "HTTP/1.1 200 OK\r\n"
+                response += "Content-Type: application/json\r\n"
+                response += "Access-Control-Allow-Origin: *\r\n"
+                response += "Connection: close\r\n\r\n"
+                response += body
+                
+                cl.send(response.encode())
+                time.sleep(0.1) 
+            except Exception as e:
+                pass
+            finally:
+                if cl:
+                    cl.close()
+    except Exception as e:
+        print("Server fatal error:", e)
 
-    # 3. AP 활성화 및 설정
-    ap_if.active(True)
-    ap_if.config(essid=hostname, password=password)
-
-    # 4. 네트워크 정보 설정 (기본값: 192.168.4.1)
-    # 별도로 설정하지 않아도 기본적으로 192.168.4.1로 잡힙니다.
-
-    print(f"AP Mode Started!")
-    print(f"SSID: {hostname}")
-    print(f"IP Address: {ap_if.ifconfig()[0]}")
-
-    return hostname
-
-# 네트워크 설정 실행
-my_name = setup_ap_mode()
-
-# 5. WebREPL 시작 (사전에 webrepl_cfg.py가 있어야 매끄럽게 연결됩니다)
-try:
+# 네트워크 및 스레드 실행
+def setup():
+    global hostname
+    ap = network.WLAN(network.AP_IF)
+    uid = binascii.hexlify(machine.unique_id()).decode()
+    hostname = f"pico-{uid[-4:]}"
+    ap.active(True)
+    # password는 최소 8자!, AP가 Sleep모드에 빠지지 않게 PM 설정
+    ap.config(essid=hostname, password=f"pwd-{uid[-4:]}", pm=0xa11140)
+    
+    try:
+        _thread.start_new_thread(info_server_thread, ())
+    except OSError: pass
+    
     webrepl.start(password='1234')
-except Exception as e:
-    print("WebREPL 시작 실패:", e)
 
-# 6. mDNS 관련 (AP 모드에서도 .local 인식을 돕기 위해 호스트네임 등록)
-try:
-    network.hostname(my_name)
-except:
-    pass
+setup()

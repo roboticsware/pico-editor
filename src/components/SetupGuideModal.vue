@@ -4,9 +4,9 @@ import { useI18n } from 'vue-i18n';
 import { 
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, 
   IonButton, IonText, IonBadge, IonIcon, IonProgressBar, IonSpinner,
-  IonCard, IonCardContent, IonCardHeader, IonGrid, IonRow, IonCol
+  IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonGrid, IonRow, IonCol
 } from '@ionic/vue';
-import { flashOutline, warningOutline, checkmarkCircle, arrowForward } from 'ionicons/icons';
+import { flashOutline, warningOutline, checkmarkCircle, arrowForward, wifi } from 'ionicons/icons';
 
 // Import local assets
 import step1Img from '@/assets/step1.png';
@@ -22,18 +22,24 @@ import { flashFirmware, injectLibraries } from '@/utils/firmware-flash';
 import { Capacitor } from '@capacitor/core';
 import { serial } from '@/utils/serial';
 
-const props = defineProps<{ isOpen: boolean }>();
+const props = withDefaults(defineProps<{ 
+  isOpen: boolean,
+  initialStep?: number 
+}>(), {
+  initialStep: 1
+});
 const emit = defineEmits(['close', 'install-complete']);
 const deviceStore = useDeviceStore();
 const { t } = useI18n();
 
 const isElectron = Capacitor.getPlatform() === 'electron';
-const currentStep = ref(1);
+const currentStep = ref(props.initialStep);
 const selectedModel = ref<string>('');
 const isFlashing = ref(false);
 const progress = ref(0);
 const statusMessage = ref('');
 const currentModelInfo = ref<{ id: string; isWireless: boolean } | null>(null);
+const picoIdSuffix = ref<string>('xxxx');
 
 const models = computed(() => [
   { id: 'pico', name: 'Pico', img: picoImg, firm: 'RPI_PICO-20251209-v1.27.0.uf2' },
@@ -45,12 +51,13 @@ const models = computed(() => [
 // Reset state when modal opens
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
-    currentStep.value = 1;
+    currentStep.value = props.initialStep;
     selectedModel.value = '';
     isFlashing.value = false;
     progress.value = 0;
     statusMessage.value = '';
     currentModelInfo.value = null;
+    picoIdSuffix.value = 'xxxx';
   }
 });
 
@@ -60,21 +67,17 @@ const nextStep = async () => {
   if (isElectron && next === 2) {
     next = 3;
   }
-  // In Web, skip Step 4 (Library Install Prompt - Electron only)
-  if (!isElectron && next === 4) {
-    next = 5;
-  }
 
-  if (next <= 5) {
+  if (next <= 4) {
     currentStep.value = next;
 
     if (currentStep.value === 3) { // USB drive selection
-      await deviceStore.scanPicoStatus();
-      if (deviceStore.statusType === 'retry') {
+      await deviceStore.scanPicoFWstatus();
+      if (deviceStore.fwStatusType === 'retry') {
         await alertCustom(t('common.error'), t('setup.retry'), '❌');
         // Go back to previous step
         prevStep();
-      } else if (deviceStore.statusType === 'already') {
+      } else if (deviceStore.fwStatusType === 'already') {
         await alertCustom(t('common.error'), t('setup.already'), '❌');
         handleDismiss();
       }
@@ -87,10 +90,6 @@ const prevStep = () => {
   // In Electron, skip Step 2
   if (isElectron && prev === 2) {
     prev = 1;
-  }
-  // In Web, skip Step 4
-  if (!isElectron && prev === 4) {
-    prev = 3;
   }
   
   if (prev >= 1) currentStep.value = prev;
@@ -117,11 +116,7 @@ const startInstallation = async () => {
     // Flashing complete at 60%
     // Show platform-specific intermediate screen
     isFlashing.value = false;
-    if (isElectron) {
-      currentStep.value = 4;
-    } else { // web
-      currentStep.value = 5;
-    }
+    currentStep.value = 4;
 
   } catch (err: any) {
     console.error(err);
@@ -142,6 +137,17 @@ const handleLibraryInstall = async () => {
   isFlashing.value = true;
   
   try {
+    // If directly entering step 4 without model info, ensure we have defaults or prompts
+    // But typically this stores model info from previous step. 
+    // If independent entry is needed, we might need to assume or ask model.
+    // For now, assume flow or safe defaults.
+    if (!currentModelInfo.value) {
+        // Fallback or error? 
+        // If independent, maybe we assume Pico W? Or disable this?
+        // Let's assume generic for library install (libraries are mostly same)
+        currentModelInfo.value = { id: 'pico_w', isWireless: true };
+    }
+
     if (!currentModelInfo.value) return;
     
     statusMessage.value = t('setup.library_installing');
@@ -154,10 +160,22 @@ const handleLibraryInstall = async () => {
       if (!connected) return;
     }
     
-    await injectLibraries(currentModelInfo.value, (status: any) => {
+    const idSuffix = await injectLibraries(currentModelInfo.value, (status: any) => {
       progress.value = status.progress;
       statusMessage.value = t(status.status);
     }, isElectron);
+    
+    if (idSuffix) {
+        picoIdSuffix.value = idSuffix;
+        deviceStore.picoIdSuffix = idSuffix;
+        localStorage.setItem('picoIdSuffix', idSuffix);
+    }
+
+    // Save model info
+    if (currentModelInfo.value && currentModelInfo.value.id) {
+       deviceStore.picoModel = currentModelInfo.value.id;
+       localStorage.setItem('picoModel', currentModelInfo.value.id);
+    }
     
     // Complete (100%)
     progress.value = 1;
@@ -188,7 +206,7 @@ const handleLibraryInstall = async () => {
   }
 };
 
-const handleDismiss = () => {
+const handleDismiss = async () => {
   if (!isFlashing.value || progress.value >= 1) {
     // Reset steps when closed
     currentStep.value = 1;
@@ -279,9 +297,10 @@ const handleDismiss = () => {
           </ion-card>
         </div>
 
-        <!-- Step 4: Electron Library Install Prompt -->
+        <!-- Step 4: Library Install / Boot Setup -->
         <div v-show="currentStep === 4" class="step-view">
-          <ion-card class="step-card">
+          <!-- Electron View -->
+          <ion-card class="step-card" v-if="isElectron">
             <ion-card-header>
               <ion-badge color="success">{{ t('setup.f_complete') }}</ion-badge>
             </ion-card-header>
@@ -296,19 +315,17 @@ const handleDismiss = () => {
               </ion-button>
             </ion-card-content>
           </ion-card>
-        </div>
 
-        <!-- Step 5: Web Port Selection -->
-        <div v-show="currentStep === 5" class="step-view">
-          <ion-card class="step-card">
+          <!-- Web View -->
+          <ion-card class="step-card" v-else>
             <ion-card-header>
-              <ion-badge color="tertiary">{{ t('setup.step5_title') }}</ion-badge>
+              <ion-badge color="tertiary">{{ t('setup.step4_title') }}</ion-badge>
             </ion-card-header>
             <ion-card-content class="step-content">
               <div class="img-wrapper">
                 <img :src="step5Img" alt="Select Port" />
               </div>
-              <p v-html="t('setup.step5_desc')"></p>
+              <p v-html="t('setup.step4_desc')"></p>
               <ion-button expand="block" class="ion-margin-top" @click="handleLibraryInstall">
                   {{ t('setup.next') }}
                   <ion-icon slot="end" :icon="arrowForward" />
@@ -331,8 +348,7 @@ const handleDismiss = () => {
             <span :class="{ active: currentStep === 1 }"></span>
             <span :class="{ active: currentStep === 2 }" v-if="!isElectron"></span>
             <span :class="{ active: currentStep === 3 }"></span>
-            <span :class="{ active: currentStep === 4 }" v-if="isElectron"></span>
-            <span :class="{ active: currentStep === 5 }" v-if="!isElectron"></span>
+            <span :class="{ active: currentStep === 4 }"></span>
           </div>
 
           <ion-button 
@@ -368,6 +384,22 @@ const handleDismiss = () => {
           <ion-card-content>
             <ion-icon :icon="warningOutline" slot="start"></ion-icon>
             <strong>{{ t('common.notice') }}:</strong> {{ t('setup.flashing') }}
+          </ion-card-content>
+        </ion-card>
+
+        <ion-card v-if="progress >= 1 && currentModelInfo?.isWireless" class="wifi-info-card">
+          <ion-card-header>
+            <ion-card-title class="ion-text-start" style="font-size: 1rem; display: flex; align-items: center;">
+                <ion-icon :icon="wifi" class="ion-margin-end"/> 
+                {{ t('setup.wifi_config_title') }}
+            </ion-card-title>
+          </ion-card-header>
+          <ion-card-content class="ion-text-start">
+            <p style="margin-bottom: 8px;">{{ t('setup.wifi_connect_guide') }}</p>
+            <ul style="padding-left: 20px; margin: 0;">
+              <li><strong>SSID:</strong> pico-{{ picoIdSuffix }}</li>
+              <li><strong>Password:</strong> pwd-{{ picoIdSuffix }}</li>
+            </ul>
           </ion-card-content>
         </ion-card>
 

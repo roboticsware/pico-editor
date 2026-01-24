@@ -38,9 +38,9 @@ import router from './router'
 import i18n from './i18n'
 import { useThemeStore } from './stores/themeStore'
 
-const app = createApp(App)
-
-app.use(IonicVue)
+const app = createApp(App).use(IonicVue, {
+    innerHTMLTemplatesEnabled: true
+})
 const pinia = createPinia()
 app.use(pinia)
 app.use(router)

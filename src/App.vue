@@ -5,7 +5,42 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted, watch } from 'vue';
 import { IonApp, IonRouterOutlet } from '@ionic/vue';
+import { App } from '@capacitor/app';
+import { useDeviceStore } from '@/stores/deviceStore';
+import { useSerialStore } from '@/stores/serialStore';
+
+const deviceStore = useDeviceStore();
+const serialStore = useSerialStore();
+
+onMounted(async () => {
+  deviceStore.startAutoScan();
+
+  // 앱이 백그라운드에 있다가 다시 포그라운드(화면 제일 앞)로 올라오는 순간을 감지
+  await App.addListener('appStateChange', (state) => {
+    if (state.isActive) {
+      deviceStore.triggerOneShotScan();
+    }
+  });
+});
+
+// Restart scan when disconnected
+watch(() => serialStore.isConnected, (connected) => {
+  if (!connected) {
+    if (!serialStore.isManualDisconnect) {
+      deviceStore.startAutoScan();
+    }
+  } else {
+    deviceStore.stopAutoScan();
+  }
+});
+
+onUnmounted(() => {
+  deviceStore.stopAutoScan();
+  App.removeAllListeners();
+});
+
 </script>
 
 <style>

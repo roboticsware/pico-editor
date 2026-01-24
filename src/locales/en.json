@@ -5,6 +5,7 @@
     "notice": "Notice",
     "error": "Error",
     "select": "Select",
+    "dontShowAgain": "Don't show again",
     "close": "Close"
   },
   "navbar": {
@@ -17,11 +18,11 @@
     "stop": "Stop",
     "upload": "Upload as main.py",
     "uploading": "Uploading...",
+    "searching_pico": "Searching for Pico...",
     "lib_manager": "Library Manager"
   },
   "editor": {
     "default_comment": "# Start code here",
-    "python_editor": "Python Editor",
     "saveToFile": "Save as (.py) file",
     "modified": "Modified",
     "modal": {
@@ -32,13 +33,23 @@
       "select": "Select Mode",
       "title": "Mode Change Warning",
       "message": "Changing the mode may cause current blocks to be lost. Do you want to continue?",
-      "install_firmware": "New User? Firmware Installation"
-    }
+      "install_firmware": "New User? Firmware Installation",
+      "wireless_setup": "Basic Library Install & Wireless Setup"
+    },
+    "serial_detected": "Currently, there is a serial connection to the Pico. Do you want to connect? If you want to try wireless connection, please select 'No'.",
+    "wifi_detected_title": "Pico Connection Detected!",
+    "wifi_detected_desc": "Would you like to do wireless Pico connection now?",
+    "wifi_conf_wrong": "1. WiFi is OFF.<br>2. Or, Not connected to WiFi starting with <strong>pico-(4digits)</strong><br>3. Or, Wrong WiFi setting in Pico. <br></br>For reference, when connecting to a WiFi starting with pico-(4 digits), the connection password is <strong>pwd-(4 digits)</strong> of the name. Try connecting to the dedicated Pico WiFi mentioned in step 2. Or, do you reset the default wireless settings in Pico?",
+    "wifi_different_device": "Detected device ({new}) is different from the previously connected one ({old}). Connect anyway?",
+    "noCodeToUpload": "No code to upload. Please write some code first.",
+    "noCodeToRun": "No code to run. Please write some code first.",
+    "serialNotSupported": "This browser does not support Web Serial API. Please use Chrome or Edge.",
+    "connectedViaWiFi": "Connected via WiFi",
+    "disconnectedFromDevice": "Disconnected from Device",
+    "android_wifi_error_guide": "WiFi connection failed.\nIf basic wifi setting is not correct, connection will be failed.\n\nSolution:\nRun 'Basic Library Install & Wireless Setup' on PC to complete wifi setting, then retry.",
+    "wifi_ssid_mismatch": "Current Wi-Fi ({ssid}) does not start with 'pico-'. Attempt connection anyway?"
   },
-  "popup": {
-    "dontShowAgain": "Don't show again"
-  },
-  "msg": {
+  "terminal": {
     "letsStartCoding": "🚀 Let's start coding!",
     "connectSuccess": "✅ Pico Connected Successfully",
     "connectError": "❌ Connection Failed: {error}",
@@ -50,13 +61,11 @@
     "runError": "❌ Code Execution Failed: {error}",
     "stopSuccess": "✅ Code Execution Stopped",
     "stopError": "❌ Stop Failed: {error}",
-    "noCodeToUpload": "No code to upload. Please write some code first.",
-    "noCodeToRun": "No code to run. Please write some code first.",
-    "serialNotSupported": "This browser does not support Web Serial API. Please use Chrome or Edge.",
     "noDeviceSelected": "No device selected or found.",
     "noDeviceFound": "No device found to connect. Please check if your Pico is properly connected.",
     "securityError": "Blocked by security policy. (Please check if you are in an HTTPS environment)",
-    "portAlreadyOpen": "Could not open serial port. Please try again later or check if it's already in use by another program."
+    "portAlreadyOpen": "Could not open serial port. Please try again later or check if it's already in use by another program.",
+    "networkDisconnected": "Network Disconnected"
   },
   "project": {
     "empty": "No code to save.",
@@ -64,25 +73,7 @@
     "confirm_msg": "The project was created in {mode} mode. Switch to {mode} mode and load the file?",
     "workspace_error": "An error occurred during workspace transition. Please try again.",
     "no_workspace": "No valid workspace found.",
-    "load_error": "An error occurred while loading the project.",
-    "mode_change": {
-      "title": "Mode Change Warning",
-      "message": "Changing the mode may cause current blocks to be lost. Do you want to continue?"
-    }
-  },
-  "wifi": {
-    "config_title": "WiFi Connection Settings",
-    "description": "Connect to Raspberry Pi Pico W via WiFi to wirelessly execute code and transfer files.",
-    "host": "Host Address",
-    "port": "Port",
-    "password": "WebREPL Password",
-    "password_placeholder": "Enter password set on Pico",
-    "connect_button": "Connect",
-    "setup_guide": "Pico W Setup Guide",
-    "step1": "Install MicroPython firmware on Pico W",
-    "step2": "Run 'import webrepl_setup' in REPL to configure WebREPL",
-    "step3": "Connect to WiFi network or set up AP mode",
-    "step4": "Check Pico's IP address and enter it above"
+    "load_error": "An error occurred while loading the project."
   },
   "update": {
     "title": "Check for Updates",
@@ -110,10 +101,12 @@
       "pico2": "Pico 2",
       "pico2_w": "Pico 2 W"
     },
-    "step5_title": "Step 4: Serial Port Recognition",
-    "step5_desc": "<strong>Serial Port</strong> to be selected.",
+    "step4_title": "Step 4: Serial Port Recognition",
+    "step4_desc": "<strong>Serial Port</strong> to be selected.",
     "start_install": "Start Firmware Installation",
     "f_complete": "Firmware Installation Complete!",
+    "wifi_config_title": "WiFi AP Mode Configured",
+    "wifi_connect_guide": "Connect to your Pico's WiFi network:",
     "l_complete": "Library Installation Complete! Pico is resetting.",
     "success_btn": "Select Mode & Start Coding",
     "next": "Next",
@@ -123,10 +116,10 @@
     "copy_error": "Error copying file",
     "retry": "Previous step needs to be checked again.",
     "already": "This Pico is already installed with firmware. The process will be terminated.",
-    "flashing": "Flashing... Do not unplug!",
+    "flashing": "Copying... Do not unplug!",
     "rebooting": "Waiting for reboot... Please wait.",
     "progress": "In progress...",
-    "library_install_prompt": "Now installing libraries",
+    "library_install_prompt": "Now installing basic library and WiFi setup.",
     "port_selection_guide": "Reboot complete. Please select the Pico port.",
     "library_installing": "Installing libraries..."
   }

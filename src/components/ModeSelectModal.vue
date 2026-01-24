@@ -8,10 +8,18 @@ import {
   IonGrid, IonRow, IonCol, IonCard, IonCardHeader, 
   IonCardTitle, IonCardContent, IonButton 
 } from '@ionic/vue';
+import { Capacitor } from '@capacitor/core';
 
 const modeStore = useModeStore();
 const { t } = useI18n();
 const showSetupGuide = ref(false);
+const setupInitialStep = ref(1);
+const isAndroid = Capacitor.getPlatform() === 'android';
+
+const openSetupGuide = (step: number) => {
+  setupInitialStep.value = step;
+  showSetupGuide.value = true;
+};
 </script>
 
 <template>
@@ -22,9 +30,13 @@ const showSetupGuide = ref(false);
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
-      <div class="modal-footer">
-        <ion-button fill="clear" @click="showSetupGuide = true">
+      <div v-if="!isAndroid" class="modal-footer">
+        <ion-button fill="clear" @click="openSetupGuide(1)">
           {{ t('editor.mode_change.install_firmware') }}
+        </ion-button>
+        <div class="v-divider"></div>
+        <ion-button fill="clear" @click="openSetupGuide(4)">
+          {{ t('editor.mode_change.wireless_setup') }}
         </ion-button>
       </div>
       <div class="modal-container">
@@ -47,7 +59,11 @@ const showSetupGuide = ref(false);
         </ion-grid>
       </div>
     </ion-content>
-    <SetupGuideModal :is-open="showSetupGuide" @close="showSetupGuide = false" />
+    <SetupGuideModal 
+        :is-open="showSetupGuide" 
+        :initial-step="setupInitialStep" 
+        @close="showSetupGuide = false" 
+    />
   </ion-modal>
 </template>
 
@@ -86,6 +102,16 @@ const showSetupGuide = ref(false);
   margin-top: 20px;
   display: flex;
   justify-content: center;
+  align-items: center;
   width: 100%;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.v-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--ion-border-color, #ccc);
+  margin: 0 10px;
 }
 </style>

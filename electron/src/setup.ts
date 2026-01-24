@@ -265,8 +265,10 @@ export function setupContentSecurityPolicy(customScheme: string): void {
         ...details.responseHeaders,
         'Content-Security-Policy': [
           electronIsDev
-            ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data: https://fonts.googleapis.com https://fonts.gstatic.com`
-            : `default-src ${customScheme}://* 'unsafe-inline' 'unsafe-eval' data: blob: https://fonts.googleapis.com https://fonts.gstatic.com`,
+            ? `default-src ${customScheme}://* 'unsafe-inline' devtools://* 'unsafe-eval' data: https://fonts.googleapis.com https://fonts.gstatic.com` +
+            `connect-src ${customScheme}://* ws://192.168.4.1:8266 http://192.168.4.1;`
+            : `default-src ${customScheme}://* 'unsafe-inline' 'unsafe-eval' data: blob: https://fonts.googleapis.com https://fonts.gstatic.com` +
+            `connect-src ${customScheme}://* ws://192.168.4.1:8266 http://192.168.4.1;`
         ],
       },
     });

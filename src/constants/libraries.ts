@@ -17,5 +17,13 @@ export const AVAILABLE_LIBRARIES: Library[] = [
     version: '0.4.5',
     sourceUrl: 'https://raw.githubusercontent.com/roboticsware/picozero/refs/heads/main/picozero/picozero.py',
   },
+  {
+    id: 'boot',
+    name: 'Boot Script',
+    fileName: 'boot.py',
+    description: 'System boot script for Pico W',
+    version: '1.0.0',
+    content: undefined // Load from assets
+  },
   // 추가 라이브러리들...
 ];

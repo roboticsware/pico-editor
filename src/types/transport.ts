@@ -85,3 +85,15 @@ export interface ConnectionConfig {
     port?: number;
     password?: string;
 }
+
+/**
+ * Low-level Transport interface for ConnectionManager
+ */
+export interface Transport {
+    isConnected: boolean;
+    connect(options?: any): Promise<boolean>;
+    disconnect(): Promise<void>;
+    write(data: string | Uint8Array): Promise<void>;
+    onData(callback: (data: string) => void): void;
+    onDisconnect(callback: () => void): void;
+}

@@ -1,30 +1,40 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useCodeStore } from '../stores/codeStore';
 import { useLogStore } from '../stores/logStore';
 import { useSerialStore } from '../stores/serialStore';
 import { useLangStore } from '../stores/langStore';
 import { useThemeStore } from '../stores/themeStore';
+import { useDeviceStore } from '../stores/deviceStore';
 import { useModeStore } from '../stores/modeStore';
 import { confirmCustom, alertCustom } from '../services/modal-confirm';
 import { 
   IonToolbar, IonButtons, IonButton, IonIcon, 
   IonSpinner, actionSheetController
 } from '@ionic/vue';
+import SetupGuideModal from './SetupGuideModal.vue';
 import { 
   play, square, download, folderOpen, save, 
-  globe, moon, sunny, flash, flashOff
+  globe, moon, sunny, flash, flashOff, wifi, hardwareChip
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { toastController } from '@ionic/vue';
+import { checkUsbConnection, isWebReplAvailable, getPicoHostname } from '../utils/serial';
 
 const codeStore = useCodeStore();
 const logStore = useLogStore();
 const serialStore = useSerialStore();
+const deviceStore = useDeviceStore();
 const modeStore = useModeStore();
 const langStore = useLangStore();
 const themeStore = useThemeStore();
+
+const isAndroid = Capacitor.getPlatform() === 'android';
+
+// Setup Modal State
+const showSetupModal = ref(false);
+const setupInitialStep = ref(1);
 
 // 업데이트 및 환경 관련
 const isElectron = !!window.ElectronUpdater;
@@ -34,6 +44,17 @@ const isAppMode = isElectron || isPWA || isNative;
 
 const updateProgress = ref(0);
 const isDownloading = ref(false);
+
+const { t } = useI18n();
+
+onMounted(() => {
+  if (isAndroid) {
+    // Attempt auto-connect for Android
+    setTimeout(() => {
+      handleConnectionToggle();
+    }, 500);
+  }
+});
 
 if (isElectron) {
   window.ElectronUpdater.onUpdateAvailable((info) => {
@@ -104,7 +125,7 @@ const handleUpdateCheck = async () => {
   } else if (isNative) {
     // Native update check - usually handled by app stores or OTA service
     // For now just show a message.
-    alertCustom(t('update.title'), t('msg.letsStartCoding'), '📱');
+    alertCustom(t('update.title'), t('terminal.letsStartCoding'), '📱');
   }
 };
 
@@ -120,9 +141,6 @@ const handleModeChangeRequest = async () => {
     modeStore.setMode(null);
   }
 };
-
-// 다국어 지원
-const { t } = useI18n();
 
 const handleLangClick = async () => {
   const actionSheet = await actionSheetController.create({
@@ -165,26 +183,170 @@ const onFileSelect = (e: Event) => {
     target.value = '';
   }
 };
-
 const onFileSave = () => emit('request-save'); 
 
 // Pico 연결 핸들러
 const handleConnectionToggle = async () => {
   if (!serialStore.isConnected) {
+    // Android: Always Wireless
+    if (isAndroid) {
+      // Check Network Status First
+      try {
+          const { Network } = await import('@capacitor/network');
+          const status = await Network.getStatus();
+          // If not connected or not wifi, we can't be connected to Pico AP
+          if (!status.connected || status.connectionType !== 'wifi') {
+              console.log("Network Check: Not connected to WiFi (Type: " + status.connectionType + ")");
+              return false;
+          }
+      } catch (e) {
+          console.warn("Network check failed", e);
+      }
+
+      // Check SSID before connecting
+      try {
+          const { Geolocation } = await import('@capacitor/geolocation');
+          try {
+             await Geolocation.requestPermissions();
+          } catch(e) { console.warn("Location permission error", e); }
+
+          const WifiWizard2 = (window as any).WifiWizard2;
+          if (WifiWizard2) {
+             const rawSSID = await WifiWizard2.getConnectedSSID();
+             // Android often returns SSID with quotes
+             const ssid = rawSSID ? rawSSID.replace(/^"|"$/g, '') : '';
+             
+             if (ssid && ssid !== '<unknown ssid>' && !ssid.startsWith('pico-')) {
+                  const proceed = await confirmCustom(
+                      t('common.notice'),
+                      t('editor.wifi_ssid_mismatch', { ssid: ssid }),
+                      '⚠️'
+                  );
+                  if (!proceed) return;
+             }
+          }
+      } catch (e) {
+          console.warn("SSID check skipped", e);
+      }
+
+      try {
+          const success = await serialStore.connect({ type: 'wifi' });
+          if (success) {
+            logStore.addLog('system', t('terminal.connectSuccess'));
+          }
+      } catch (err) {
+          console.warn("Auto-connect failed", err);
+          await alertCustom(
+             t('common.notice'),
+             t('editor.android_wifi_error_guide'),
+             '⚠️'
+          );
+      }
+      return;
+    }
+
+    // Web/Electron
+    // Check if we know the device model or have history
+    const currentModel = deviceStore.picoModel;
+    const hasHistory = deviceStore.picoIdSuffix && deviceStore.picoIdSuffix !== 'xxxx';
+
+    const isUsbConnected = await checkUsbConnection();
+    if (isUsbConnected) {
+      const proceed = await confirmCustom(
+          t('common.notice'),
+          t('editor.serial_detected'),
+          '⚠️'
+      );
+      if (proceed) {
+        try {
+          const success = await serialStore.connect({ type: 'serial' });
+          if (success) {
+            logStore.addLog('system', t('terminal.connectSuccess'));
+          }
+        } catch (error: any) {
+          logStore.addLog('error', t('terminal.connectError', {error: error.message}));
+        }
+        return;
+      }
+    }
+
+    const isWebRepl = await isWebReplAvailable();
+    if (isWebRepl) {
+        // Validation check for mismatch before connecting
+        const hostname = await getPicoHostname();
+        if (hostname && deviceStore.picoIdSuffix && deviceStore.picoIdSuffix !== 'xxxx') {
+             const oldSuffix = deviceStore.picoIdSuffix;
+             const parts = hostname.split('-');
+             const newSuffix = parts.length === 2 ? parts[1] : '';
+             
+             if (newSuffix && newSuffix !== oldSuffix) {
+                 const proceed = await confirmCustom(
+                     t('common.notice'),
+                     t('editor.wifi_different_device', { new: newSuffix, old: oldSuffix }),
+                     '⚠️'
+                 );
+                 if (!proceed) return;
+                 // Update to new suffix so password works
+                 deviceStore.picoIdSuffix = newSuffix;
+                 localStorage.setItem('picoIdSuffix', newSuffix);
+             }
+        }
+        
+        // Try connecting via WiFi
+        try {
+            await new Promise(r => setTimeout(r, 3000)); // Wait for socket cleanup
+            
+            let wifiPassword = '1234'; // Hardcorded in webrepl_cfg.py
+
+            const success = await serialStore.connect({ 
+                type: 'wifi', 
+                host: '192.168.4.1', 
+                port: 8266, 
+                password: wifiPassword 
+            });
+            if (success) {
+                logStore.addLog('system', t('terminal.connectSuccess') + ' (WiFi)');
+                toastController.create({
+                    message: t('editor.connectedViaWiFi'),
+                    duration: 2000,
+                    color: 'success'
+                }).then(t => t.present());
+                return;
+            }
+        } catch (e) {
+            console.warn("WiFi detected but failed to connect, falling back to serial", e);
+        }
+    } else { // WebRepl not available
+        // If the user *expected* wireless (model implies it or history exists), maybe boot.py is missing?
+        const ok = await confirmCustom(
+             t('common.notice'),
+             t('editor.wifi_conf_wrong'),
+             '🔧'
+        );
+
+        if (ok) {
+            setupInitialStep.value = 4;
+            showSetupModal.value = true;
+            return; // Exit connection attempt to let user setup
+        }
+    }
+
+    // Default Fallback: Serial
+    if (serialStore.isConnected || isUsbConnected) return;
     try {
-      const success = await serialStore.connect();
+      const success = await serialStore.connect({ type: 'serial' });
       if (success) {
-        logStore.addLog('system', t('msg.connectSuccess'));
+        logStore.addLog('system', t('terminal.connectSuccess'));
       }
     } catch (error: any) {
-      logStore.addLog('error', t('msg.connectError', {error: error.message}));
+      logStore.addLog('error', t('terminal.connectError', {error: error.message}));
     }
-  } else {
+  } else { // Disconnect Logic by Toggle
     try {
-      await serialStore.disconnect();
+      await serialStore.disconnect(true);
       logStore.addLog('system', t('navbar.disconnect'));
     } catch (error: any) {
-      logStore.addLog('error', t('msg.disconnectError', {error: error.message}));
+      logStore.addLog('error', t('terminal.disconnectError', {error: error.message}));
     }
   }
 };
@@ -197,24 +359,24 @@ async function handleRunToggle() {
     trimmedCode === t('editor.default_comment');
 
   if (isEmptyOrDefaultOnly) {
-    await alertCustom(t('common.notice'), t('msg.noCodeToRun'), '💡');
+    await alertCustom(t('common.notice'), t('editor.noCodeToRun'), '💡');
     return;
   }
 
   if (!serialStore.isRunning) {
     try {
       await serialStore.run(codeStore.pythonCode);
-      logStore.addLog('system', t('msg.runSuccess'));
+      logStore.addLog('system', t('terminal.runSuccess'));
     } catch (error: any) {
-      logStore.addLog('error', t('msg.runError',  {error: error.message}));
+      logStore.addLog('error', t('terminal.runError',  {error: error.message}));
       serialStore.isRunning = false;
     }
   } else {
     try {
       await serialStore.stop();
-      logStore.addLog('system', t('msg.stopSuccess'));
+      logStore.addLog('system', t('terminal.stopSuccess'));
     } catch (error: any) {
-      logStore.addLog('error', t('msg.stopError',  {error: error.message}));
+      logStore.addLog('error', t('terminal.stopError',  {error: error.message}));
     }
   }
 }
@@ -222,19 +384,19 @@ async function handleRunToggle() {
 // 업로드 핸들러
 async function handleUpload() {
   if (!codeStore.pythonCode) {
-    await alertCustom(t('common.notice'), t('msg.noCodeToUpload'), '💡');
+    await alertCustom(t('common.notice'), t('editor.noCodeToUpload'), '💡');
     return;
   }
 
   try {
     const success = await serialStore.upload(codeStore.pythonCode);
     if (!serialStore.hasError && success) {
-      logStore.addLog('system', t('msg.uploadSuccess'));
+      logStore.addLog('system', t('terminal.uploadSuccess'));
     } else {
-      logStore.addLog('error', t('msg.uploadError'));
+      logStore.addLog('error', t('terminal.uploadError'));
     }
   } catch (error: any) {
-    logStore.addLog('error', t('msg.uploadError',  {error: error.message}));
+    logStore.addLog('error', t('terminal.uploadError',  {error: error.message}));
   }
 }
 </script>
@@ -284,14 +446,14 @@ async function handleUpload() {
     </ion-buttons>
 
     <ion-buttons slot="end">
-      <!-- Hardware Actions -->
       <ion-button 
         @click="handleConnectionToggle" 
         :fill="serialStore.isConnected ? 'outline' : 'clear'"
         :color="serialStore.isConnected ? 'success' : 'medium'"
         class="connection-btn"
+        :title="serialStore.isConnected ? (serialStore.connectionType === 'wifi' ? 'Connected via WiFi' : 'Connected via USB') : 'Connect'"
       >
-        <ion-icon slot="start" :icon="serialStore.isConnected ? flash : flashOff"></ion-icon>
+        <ion-icon slot="start" :icon="serialStore.isConnected ? (serialStore.connectionType === 'wifi' ? wifi : hardwareChip) : flashOff"></ion-icon>
         <span class="ion-hide-lg-down">{{ serialStore.isConnected ? $t('navbar.disconnect') : $t('navbar.connect') }}</span>
       </ion-button>
 
@@ -333,6 +495,12 @@ async function handleUpload() {
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
+
+  <SetupGuideModal
+      :is-open="showSetupModal"
+      :initial-step="setupInitialStep"
+      @close="showSetupModal = false"
+  />
 </template>
 
 <style scoped>

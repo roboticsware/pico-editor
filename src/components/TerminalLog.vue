@@ -18,7 +18,7 @@ watch(() => logStore.logs.length, async () => {
 
 onMounted(() => {
   // 컴포넌트가 뜨자마자 로그를 하나 생성해서 창을 채워봅니다.
-  logStore.addLog('system', i18n.global.t('msg.letsStartCoding'));
+  logStore.addLog('system', i18n.global.t('terminal.letsStartCoding'));
 });
 </script>
 

@@ -45,7 +45,7 @@
   "dependencies": {
     "@capacitor-community/electron": "^5.0.1",
     "@capacitor/android": "^8.0.1",
-    "@capacitor/cli": "^7.4.5",
+    "@capacitor/cli": "^8.0.1",
     "@capacitor/core": "^8.0.1",
     "@codemirror/lang-python": "^6.2.1",
     "@codemirror/theme-one-dark": "^6.1.3",

@@ -47,7 +47,8 @@
     "connectedViaWiFi": "와이파이로 연결되었습니다!",
     "disconnectedFromDevice": "장치와의 연결이 끊어졌습니다",
     "android_wifi_error_guide": "Wi-Fi 연결에 실패했습니다.\n 피코에 기본 무선설정이 옳바르지 않은 경우, 연결되지 않습니다.\n\n해결 방법:\nPC에서 '기본 라이브러리 설치와 무선 설정'을 진행하여 무선설정 완료 후 다시 시도해주세요.",
-    "wifi_ssid_mismatch": "현재 연결된 Wi-Fi({ssid})가 'pico-'로 시작하지 않습니다. 그래도 연결을 시도하시겠습니까?"
+    "wifi_ssid_mismatch": "현재 연결된 Wi-Fi({ssid})가 'pico-'로 시작하지 않습니다. 그래도 연결을 시도하시겠습니까?",
+    "wifi_off_guide": "Wi-Fi가 꺼져 있거나 연결되지 않았습니다. 설정에서 Wi-Fi를 켜고 Pico 네트워크에 연결해주세요. 설정 화면으로 이동하시겠습니까?"
   },
   "terminal": {
     "letsStartCoding": "🚀 자! 이제 코딩을 시작해보세요~!",
@@ -68,7 +69,7 @@
     "networkDisconnected": "네트워크 연결이 끊어졌습니다"
   },
   "project": {
-    "empty": "저장할 코드가 없습니다.",
+    "empty": "저장할 코드가 없습니다. 먼저 코드를 작성해주세요.",
     "confirm_title": "모드 전환 확인",
     "confirm_msg": "블러오려는 프로젝트는 {mode}에서 작성되었습니다. 모드를 {mode}(으)로 전환하고 파일을 불러올까요?",
     "workspace_error": "워크스페이스 전환 중 오류가 발생했습니다. 다시 시도해주세요.",

@@ -6,6 +6,9 @@ import { useCodeStore } from './codeStore';
 import { shallowRef, watch } from 'vue';
 import { alertController } from '@ionic/vue';
 import i18n from '@/i18n';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
 export const useProjectStore = defineStore('project', () => {
   const { t } = i18n.global;
@@ -23,7 +26,11 @@ export const useProjectStore = defineStore('project', () => {
     if (!ws) return;
 
     const json = Blockly.serialization.workspaces.save(ws);
-    if (Object.keys(json).length === 0) {
+
+    const currentCode = codeStore.pythonCode.trim();
+    const isDefaultOnly = currentCode === t('editor.default_comment');
+
+    if (Object.keys(json).length === 0 || isDefaultOnly) {
       const alert = await alertController.create({
         header: '⚠️ ' + t('common.notice'),
         message: t('project.empty'),
@@ -41,11 +48,99 @@ export const useProjectStore = defineStore('project', () => {
       blocks: json,
     };
 
-    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+    const fileName = `pico_project_${Date.now()}.json`;
+    const jsonStr = JSON.stringify(projectData, null, 2);
+
+    // 1. Android / iOS (Native)
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Filesystem.writeFile({
+          path: fileName,
+          data: jsonStr,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8
+        });
+
+        const uriResult = await Filesystem.getUri({
+          directory: Directory.Cache,
+          path: fileName
+        });
+
+        await Share.share({
+          title: 'Save Project',
+          url: uriResult.uri,
+          dialogTitle: 'Save Project File'
+        });
+        return;
+      } catch (e: any) {
+        console.error("Native save error", e);
+        const errToast = await import('@ionic/vue').then(m => m.toastController.create({
+          message: t('project.load_error') + ": " + e.message, // Reusing existing error key or use common error
+          duration: 3000,
+          color: 'danger'
+        }));
+        await errToast.present();
+        return;
+      }
+    }
+
+    // 2. Electron Environment Check
+    if ((window as any).FileOps?.saveProject) {
+      try {
+        const result = await (window as any).FileOps.saveProject(jsonStr, fileName);
+        if (result.success) {
+          const toast = await import('@ionic/vue').then(m => m.toastController.create({
+            message: t('navbar.save') + " " + t('common.success'), // "저장 성공" relies on translations logic, assuming logic exists or using generic success
+            duration: 2000,
+            color: 'success',
+            position: 'bottom'
+          }));
+          await toast.present();
+        }
+        return; // Exit if Electron save was attempted (whether canceled or successful)
+      } catch (e) {
+        console.error("Native save failed", e);
+        // If native save crashes, maybe we want to fall back, but usually we just return.
+      }
+    }
+
+    // 3. Web Modern (File System Access API)
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: fileName,
+          types: [{
+            description: 'Pico Editor Project',
+            accept: { 'application/json': ['.json'] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(jsonStr);
+        await writable.close();
+
+        const toast = await import('@ionic/vue').then(m => m.toastController.create({
+          message: t('navbar.save') + " " + t('common.success'),
+          duration: 2000,
+          color: 'success',
+          position: 'bottom'
+        }));
+        await toast.present();
+        return;
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error("Web Save Error", err);
+        } else {
+          return; // User cancelled
+        }
+      }
+    }
+
+    // 4. Web Fallback (Download Link)
+    const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `pico_project_${Date.now()}.json`;
+    link.download = fileName;
     link.click();
     URL.revokeObjectURL(url);
   };

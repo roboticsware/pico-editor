@@ -197,33 +197,53 @@ const handleConnectionToggle = async () => {
           // If not connected or not wifi, we can't be connected to Pico AP
           if (!status.connected || status.connectionType !== 'wifi') {
               console.log("Network Check: Not connected to WiFi (Type: " + status.connectionType + ")");
+              
+              const { NativeSettings, AndroidSettings } = await import('capacitor-native-settings');
+              const openSettings = await confirmCustom(
+                  t('common.notice'),
+                  t('editor.wifi_off_guide'), // We need to add this key or reuse error guide
+                  '📡'
+              );
+
+              if (openSettings) {
+                  try {
+                      await NativeSettings.open({
+                          optionAndroid: AndroidSettings.Wifi,
+                      } as any);
+                  } catch(e) {
+                      console.error("Failed to open settings", e);
+                  }
+              }
               return false;
           }
       } catch (e) {
           console.warn("Network check failed", e);
       }
 
-      // Check SSID before connecting
+          // Check SSID before connecting
       try {
           const { Geolocation } = await import('@capacitor/geolocation');
           try {
              await Geolocation.requestPermissions();
           } catch(e) { console.warn("Location permission error", e); }
 
-          const WifiWizard2 = (window as any).WifiWizard2;
-          if (WifiWizard2) {
-             const rawSSID = await WifiWizard2.getConnectedSSID();
-             // Android often returns SSID with quotes
-             const ssid = rawSSID ? rawSSID.replace(/^"|"$/g, '') : '';
-             
-             if (ssid && ssid !== '<unknown ssid>' && !ssid.startsWith('pico-')) {
+          const { CapacitorWifi } = await import('@capgo/capacitor-wifi');
+          try {
+              const { ssid } = await CapacitorWifi.getSsid();
+              // Android often returns SSID with quotes
+              const rawSSID = ssid || '';
+              const cleanSSID = rawSSID.replace(/^"|"$/g, '');
+              
+              if (cleanSSID && cleanSSID !== '<unknown ssid>' && !cleanSSID.startsWith('pico-')) {
                   const proceed = await confirmCustom(
                       t('common.notice'),
-                      t('editor.wifi_ssid_mismatch', { ssid: ssid }),
+                      t('editor.wifi_ssid_mismatch', { ssid: cleanSSID }),
                       '⚠️'
                   );
                   if (!proceed) return;
-             }
+              }
+          } catch (e) {
+              console.warn("Failed to get SSID", e);
           }
       } catch (e) {
           console.warn("SSID check skipped", e);

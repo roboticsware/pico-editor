@@ -17,3 +17,7 @@ contextBridge.exposeInMainWorld('ElectronUpdater', {
 contextBridge.exposeInMainWorld('PicoOps', {
     flashFirmware: (buffer: ArrayBuffer, filename: string) => ipcRenderer.invoke('flash-firmware', buffer, filename),
 });
+
+contextBridge.exposeInMainWorld('FileOps', {
+    saveProject: (data: string, defaultName: string) => ipcRenderer.invoke('save-project-file', data, defaultName),
+});

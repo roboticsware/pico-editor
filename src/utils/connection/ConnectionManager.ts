@@ -1,12 +1,14 @@
 import type { Transport } from '../../types/transport';
 import { SerialTransport } from './SerialTransport';
 import { WebSocketTransport } from './WebSocketTransport';
+import { AndroidSerialTransport } from './AndroidSerialTransport';
+import { Capacitor } from '@capacitor/core';
 
 export type ConnectionType = 'serial' | 'wifi';
 
 export class ConnectionManager {
     private transport: Transport;
-    private serialTransport: SerialTransport;
+    private serialTransport: Transport;
     private wsTransport: WebSocketTransport;
     private activeType: ConnectionType = 'serial';
 
@@ -14,7 +16,12 @@ export class ConnectionManager {
     private logListener: ((data: string) => void) | null = null;
 
     constructor() {
-        this.serialTransport = new SerialTransport();
+        if (Capacitor.getPlatform() === 'android') {
+            this.serialTransport = new AndroidSerialTransport();
+        } else {
+            this.serialTransport = new SerialTransport();
+        }
+
         this.wsTransport = new WebSocketTransport();
         this.transport = this.serialTransport; // Default
 

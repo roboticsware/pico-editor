@@ -47,7 +47,8 @@
     "connectedViaWiFi": "Connected via WiFi",
     "disconnectedFromDevice": "Disconnected from Device",
     "android_wifi_error_guide": "WiFi connection failed.\nIf basic wifi setting is not correct, connection will be failed.\n\nSolution:\nRun 'Basic Library Install & Wireless Setup' on PC to complete wifi setting, then retry.",
-    "wifi_ssid_mismatch": "Current Wi-Fi ({ssid}) does not start with 'pico-'. Attempt connection anyway?"
+    "wifi_ssid_mismatch": "Current Wi-Fi ({ssid}) does not start with 'pico-'. Attempt connection anyway?",
+    "wifi_off_guide": "Wi-Fi is off or not connected. Please enable Wi-Fi in settings and connect to the Pico network. Go to Settings?"
   },
   "terminal": {
     "letsStartCoding": "🚀 Let's start coding!",
@@ -68,7 +69,7 @@
     "networkDisconnected": "Network Disconnected"
   },
   "project": {
-    "empty": "No code to save.",
+    "empty": "No code to save. Please write some code first.",
     "confirm_title": "Confirm Mode Change",
     "confirm_msg": "The project was created in {mode} mode. Switch to {mode} mode and load the file?",
     "workspace_error": "An error occurred during workspace transition. Please try again.",

@@ -141,17 +141,18 @@ except:
 
     // Prepare Manifest
     let currentManifest: Record<string, string> = {};
-    try {
-      const manifestStr = await serial.readFile('.lib_manifest.json');
-      if (manifestStr) {
+
+    // We treat 'null' as missing file. Errors should propagate to prevent data loss.
+    const manifestStr = await serial.readFile('.lib_manifest.json');
+    if (manifestStr !== null) {
+      try {
         currentManifest = JSON.parse(manifestStr);
         console.log("Loaded existing library manifest:", currentManifest);
-      } else {
-        console.log("No library manifest found, creating new one.");
+      } catch (jsonErr) {
+        console.warn("Manifest corrupted, starting fresh.", jsonErr);
       }
-    } catch (e) {
-      console.warn("Failed to read manifest (or invalid), starting fresh.", e);
-      // No manifest or invalid JSON, ignore -> initialized to {}
+    } else {
+      console.log("No library manifest found, creating new one.");
     }
 
     const { AVAILABLE_LIBRARIES } = await import('@/constants/libraries');
@@ -170,32 +171,8 @@ except:
       return false; // Equal = false (no update)
     };
 
-    // 1. Install PicoZero
-    const picoLib = AVAILABLE_LIBRARIES.find(l => l.id === 'picozero');
-    if (picoLib) {
-      const needsUpdate = isHigherVersion(picoLib.version, currentManifest['picozero']);
-
-      if (needsUpdate) {
-        console.log(`Updating PicoZero: ${currentManifest['picozero'] || 'None'} -> ${picoLib.version}`);
-        const picozeroRes = await fetch('/assets/libs/picozero.py');
-        const picozeroCode = await picozeroRes.text();
-
-        await serial.uploadFile('/lib/picozero.py', picozeroCode, (p) => {
-          onProgress({ progress: 0.75 + (p / 100) * 0.1, status: 'setup.library_installing' });
-        }, false);
-
-        currentManifest['picozero'] = picoLib.version;
-      } else {
-        console.log(`PicoZero is up to date (${picoLib.version}). Skipping.`);
-        onProgress({ progress: 0.85, status: 'setup.library_installing' });
-      }
-    }
-
-    onProgress({ progress: 0.85, status: 'setup.library_installing' });
-
-    // If wireless model, inject boot.py and webrepl_cfg.py additionally
+    // Fetch Unique ID if wireless (needed for UI return)
     if (modelInfo.isWireless) {
-      // 1. Fetch Unique ID first
       try {
         const cmd = "import machine, binascii; print(binascii.hexlify(machine.unique_id()).decode()[-4:])";
         const result = await serial.executeCommand(cmd);
@@ -205,31 +182,74 @@ except:
       } catch (e) {
         console.warn("Failed to fetch unique ID", e);
       }
+    }
 
-      // Boot.py
-      const bootLib = AVAILABLE_LIBRARIES.find(l => l.id === 'boot');
-      if (bootLib) {
-        const needsUpdate = isHigherVersion(bootLib.version, currentManifest['boot']);
+    // Iterate and Install Libraries
+    // We spread progress from 0.75 to 0.88 approx
+    const progressStart = 0.75;
+    const progressTotal = 0.13;
+    const step = progressTotal / AVAILABLE_LIBRARIES.length;
 
-        if (needsUpdate) {
-          console.log(`Updating boot.py: ${currentManifest['boot'] || 'None'} -> ${bootLib.version}`);
-          const bootRes = await fetch('/assets/libs/boot.py');
-          const bootCode = await bootRes.text();
-          await serial.uploadFile('boot.py', bootCode, undefined, false);
-          currentManifest['boot'] = bootLib.version;
+    let index = 0;
+    for (const lib of AVAILABLE_LIBRARIES) {
+      index++;
 
-          // Only reboot if boot.py changed or forced
-        } else {
-          console.log(`boot.py is up to date (${bootLib.version}). Skipping.`);
+      // Skip boot if not wireless
+      if (lib.id === 'boot' && !modelInfo.isWireless) continue;
+
+      const needsUpdate = isHigherVersion(lib.version, currentManifest[lib.id]);
+
+      if (needsUpdate) {
+        console.log(`Updating ${lib.name}: ${currentManifest[lib.id] || 'None'} -> ${lib.version}`);
+
+        try {
+          const res = await fetch(`/assets/libs/${lib.fileName}`);
+          if (!res.ok) throw new Error(`Failed to fetch ${lib.fileName}`);
+          const code = await res.text();
+
+          let targetPath = `/lib/${lib.fileName}`;
+          if (lib.id === 'boot') targetPath = 'boot.py'; // boot.py must be in root
+
+          // Safety: If installing to /lib, check if the file exists in root and delete it to prevent shadowing
+          if (targetPath.startsWith('/lib/')) {
+            try {
+              // Checking list is expensive. execute 'os.remove' wrapped in try-except is cheapest.
+              await serial.executeCommand(`
+try:
+    os.remove('${lib.fileName}')
+    print("Deleted root copy of ${lib.fileName}")
+except:
+    pass
+`);
+            } catch (e) { /* ignore */ }
+          }
+
+          await serial.uploadFile(targetPath, code, undefined, false);
+          currentManifest[lib.id] = lib.version;
+        } catch (fetchErr) {
+          console.error(`Failed to install ${lib.name}`, fetchErr);
         }
       } else {
-        // Fallback if not found in AVAILABLE_LIBRARIES
+        console.log(`${lib.name} is up to date (${lib.version}). Skipping.`);
       }
 
+      onProgress({ progress: progressStart + (index * step), status: 'setup.library_installing' });
+    }
+
+    // If wireless, install webrepl_cfg.py (static config)
+    if (modelInfo.isWireless) {
       // Webrepl is static config usually
-      const webreplRes = await fetch('/assets/libs/webrepl_cfg.py');
-      const webreplCode = await webreplRes.text();
-      await serial.uploadFile('webrepl_cfg.py', webreplCode, undefined, false);
+      // We install it if boot was checked (implies wireless setup flow), or just always for wireless?
+      // Existing logic installed it always for wireless.
+      try {
+        const webreplRes = await fetch('/assets/libs/webrepl_cfg.py');
+        if (webreplRes.ok) {
+          const webreplCode = await webreplRes.text();
+          await serial.uploadFile('webrepl_cfg.py', webreplCode, undefined, false);
+        }
+      } catch (e) {
+        console.warn("Skipping webrepl_cfg.py (not found or error)", e);
+      }
     }
 
     // Write Manifest (Ensure it is created/updated)

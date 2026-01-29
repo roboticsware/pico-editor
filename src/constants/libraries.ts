@@ -25,5 +25,13 @@ export const AVAILABLE_LIBRARIES: Library[] = [
     version: '1.0.0',
     content: undefined // Load from assets
   },
+  {
+    id: 'neosoco',
+    name: 'NeoSoCo Library',
+    fileName: 'neosoco.py',
+    description: 'Hardware control library for NeoSoCo board (PicoZero based)',
+    version: '1.0.3',
+    content: undefined // Load from assets
+  },
   // 추가 라이브러리들...
 ];

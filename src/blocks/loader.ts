@@ -18,15 +18,15 @@ export async function loadModeBlocks(modeId: string | null) {
 
   try {
     let modules: BlockModule[] = [];
-    
+
     // 공통 블록 모듈
     const { basicModule } = await import(`./common/basic/index.ts`);
     modules.push(basicModule);
 
     switch (modeId) {
       case 'socopicolab':
-        const { testModule } = await import(`./${modeId}/test/index.ts`);
-        modules.push(testModule);
+        const { neosocoModule } = await import(`./${modeId}/neosoco/index.ts`);
+        modules.push(neosocoModule);
         break
       case 'rauf':
         const { ledModule } = await import(`./${modeId}/led/index.ts`);
@@ -60,7 +60,7 @@ export async function loadModeBlocks(modeId: string | null) {
         fullToolbox.contents.push({
           ...mod.toolbox,
           // mod.toolbox.name이 "BASIC"이라면 등록된 Msg에서 가져옴
-          name: Blockly.Msg[mod.toolbox.name] || mod.toolbox.name 
+          name: Blockly.Msg[mod.toolbox.name] || mod.toolbox.name
         });
       }
     });
@@ -71,4 +71,3 @@ export async function loadModeBlocks(modeId: string | null) {
     return null;
   }
 }
-   

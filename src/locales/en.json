@@ -1,7 +1,7 @@
 {
   "common": {
-    "ok": "OK",
-    "cancel": "Cancel",
+    "ok": "OK (Yes)",
+    "cancel": "Cancel (No)",
     "notice": "Notice",
     "error": "Error",
     "select": "Select",
@@ -19,7 +19,8 @@
     "upload": "Upload as main.py",
     "uploading": "Uploading...",
     "searching_pico": "Searching for Pico...",
-    "lib_manager": "Library Manager"
+    "lib_manager": "Library Manager",
+    "library_update": "Updating library: {name} ({oldVer} -> {newVer})..."
   },
   "editor": {
     "default_comment": "# Start code here",

@@ -1,4 +1,4 @@
-import { ref, watch, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 import { AVAILABLE_MODES, type CodingMode } from '@/constants/modes';
 
@@ -10,7 +10,7 @@ export const useModeStore = defineStore('mode', () => {
   );
 
   // 현재 모드의 전체 디테일 정보 반환
-  const currentModeDetail = computed(() => 
+  const currentModeDetail = computed(() =>
     AVAILABLE_MODES.find(m => m.id === currentMode.value) || null
   );
 

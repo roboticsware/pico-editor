@@ -19,7 +19,8 @@
     "upload": "main.py 업로드",
     "uploading": "업로드 중...",
     "searching_pico": "피코 검색 중...",
-    "lib_manager": "라이브러리 관리자"
+    "lib_manager": "라이브러리 관리자",
+    "library_update": "라이브러리 업데이트 중: {name} ({oldVer} -> {newVer})..."
   },
   "editor": {
     "default_comment": "# 여기에 코드를 작성하세요",

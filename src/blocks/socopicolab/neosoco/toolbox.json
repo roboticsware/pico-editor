@@ -1,0 +1,73 @@
+{
+    "kind": "category",
+    "name": "NeoSoCo",
+    "categorystyle": "hardware_category",
+    "contents": [
+        {
+            "kind": "block",
+            "type": "neosoco_import"
+        },
+        {
+            "kind": "block",
+            "type": "neosoco_led_on",
+            "inputs": {
+                "BRIGHTNESS": {
+                    "shadow": {
+                        "type": "math_number",
+                        "fields": {
+                            "NUM": 100
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "kind": "block",
+            "type": "neosoco_led_off"
+        },
+        {
+            "kind": "block",
+            "type": "neosoco_led_close"
+        },
+        {
+            "kind": "block",
+            "type": "neosoco_get_value"
+        },
+        {
+            "kind": "block",
+            "type": "neosoco_motor_move"
+        },
+        {
+            "kind": "block",
+            "type": "neosoco_motor_rotate",
+            "inputs": {
+                "SPEED": {
+                    "shadow": {
+                        "type": "math_number",
+                        "fields": {
+                            "NUM": 50
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "kind": "block",
+            "type": "neosoco_motor_stop"
+        },
+        {
+            "kind": "block",
+            "type": "neosoco_servo_rotate_by_degree",
+            "inputs": {
+                "DEGREE": {
+                    "shadow": {
+                        "type": "math_number",
+                        "fields": {
+                            "NUM": 90
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}

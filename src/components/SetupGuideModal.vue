@@ -11,7 +11,7 @@ import { flashOutline, warningOutline, checkmarkCircle, arrowForward, wifi } fro
 // Import local assets
 import step1Img from '@/assets/step1.png';
 import step2Img from '@/assets/step2.png';
-import step5Img from '@/assets/step5.png';
+import step4Img from '@/assets/step4.png';
 import picoImg from '@/assets/rp2-pico.thumb.png';
 import picoWImg from '@/assets/rp2-pico-w.thumb.png';
 import pico2Img from '@/assets/rp2-pico2.thumb.jpg';
@@ -323,7 +323,7 @@ const handleDismiss = async () => {
             </ion-card-header>
             <ion-card-content class="step-content">
               <div class="img-wrapper">
-                <img :src="step5Img" alt="Select Port" />
+                <img :src="step4Img" alt="Select Port" />
               </div>
               <p v-html="t('setup.step4_desc')"></p>
               <ion-button expand="block" class="ion-margin-top" @click="handleLibraryInstall">

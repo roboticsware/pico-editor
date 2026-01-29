@@ -143,6 +143,22 @@ export const useSerialStore = defineStore('serial', () => {
 
   // 라이브러리 자동 설치 확인 로직
   async function checkAndInstallLibraries(code: string) {
+    // Lazy load manifest if empty
+    if (Object.keys(remoteLibraryManifest.value).length === 0 && isConnected.value) {
+      try {
+        const manifestStr = await serial.readFile('.lib_manifest.json');
+        if (manifestStr) {
+          try {
+            remoteLibraryManifest.value = JSON.parse(manifestStr);
+          } catch (e) {
+            console.error('Failed to parse library manifest:', e);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to read library manifest:', e);
+      }
+    }
+
     const neededLibs = new Set<string>();
     const lines = code.split('\n');
     for (const line of lines) {
@@ -171,7 +187,18 @@ export const useSerialStore = defineStore('serial', () => {
           msg = `Installing library: ${libDef.name} (${libDef.version})...`;
         } else if (isVersionLower(remoteVer, libDef.version || '0.0.0')) {
           shouldInstall = true;
-          msg = `Updating library: ${libDef.name} (${remoteVer} -> ${libDef.version})...`;
+          msg = t('navbar.library_update', {
+            name: libDef.name,
+            oldVer: remoteVer,
+            newVer: libDef.version
+          });
+
+          toastController.create({
+            message: msg,
+            duration: 3000,
+            position: 'top',
+            color: 'primary'
+          }).then(t => t.present());
         }
 
         if (shouldInstall) {
@@ -210,7 +237,11 @@ export const useSerialStore = defineStore('serial', () => {
 
   async function stop() {
     if (!isConnected.value) return;
-    await serial.write('\x03'); // Ctrl+C handled via generic write
+    await serial.write('\x03'); // Ctrl+C
+    await new Promise(r => setTimeout(r, 50));
+    await serial.write('\x03'); // Double Ctrl+C
+    await new Promise(r => setTimeout(r, 50));
+    await serial.write('\x02'); // Ctrl+B (Exit Raw REPL)
     isRunning.value = false;
   }
 
@@ -273,7 +304,10 @@ export const useSerialStore = defineStore('serial', () => {
         }
       }
       // reset=false for libraries
-      await serial.uploadFile(lib.fileName, content, (p) => {
+      let targetPath = `/lib/${lib.fileName}`;
+      if (lib.id === 'boot') targetPath = 'boot.py';
+
+      await serial.uploadFile(targetPath, content, (p) => {
         libraryInstallProgress.value = p;
       }, false);
       await syncFileList();

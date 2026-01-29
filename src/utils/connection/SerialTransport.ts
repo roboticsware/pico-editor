@@ -110,7 +110,7 @@ export class SerialTransport implements Transport {
     }
 
     async write(data: string | Uint8Array): Promise<void> {
-        if (!this.writer) throw new Error('Writher is Null');
+        if (!this.writer) throw new Error('Writer is Null');
 
         if (typeof data === 'string') {
             const encoder = new TextEncoder();

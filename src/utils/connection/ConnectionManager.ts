@@ -104,21 +104,30 @@ export class ConnectionManager {
     }
 
     async runInREPL(code: string) {
-        // Ctrl+C
+        // Ctrl+C to clear line
         await this.write('\x03');
-        await new Promise(r => setTimeout(r, 500));
-        // Ctrl+A (Raw REPL)
+        await new Promise(r => setTimeout(r, 200));
+
+        // Enter Raw Mode (Ctrl+A), Raw모드는 기계대기계 통신으로 수신데이터 Echo하지 않아 터미널창이 깨끗 
         await this.write('\x01');
-        await new Promise(r => setTimeout(r, 100));
-        // Code
+        await new Promise(r => setTimeout(r, 200));
+
+        // Send Code
         await this.write(code);
-        // Ctrl+D (Soft Reset / Exec)
+        await new Promise(r => setTimeout(r, 200));
+
+        // Exit Raw Mode & Run (Ctrl+D)
+        // 페이스트 모드 안에서의 \x04는 '소프트 리셋'이 아니라 '코드 실행'입니다.
+        // Wi-Fi가 끊기지 않고 코드만 즉시 실행됩니다.
         await this.write('\x04');
+        await new Promise(r => setTimeout(r, 100));
+
+        // 일반 REPL 모드로 복귀 (Ctrl+B)
+        // 다시 일반 모드로 돌아와야 사용자가 print() 출력값을 볼 수 있습니다.
+        await this.write('\x02');
     }
 
     async executeCommand(command: string): Promise<string> {
-        if (!this.isConnected) throw new Error("executeCommand: Not connected");
-
         try {
             await this.write("\x03\x03");
             await new Promise(resolve => setTimeout(resolve, 100));

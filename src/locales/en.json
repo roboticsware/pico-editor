@@ -6,7 +6,8 @@
     "error": "Error",
     "select": "Select",
     "dontShowAgain": "Don't show again",
-    "close": "Close"
+    "close": "Close",
+    "progress": "In progress..."
   },
   "navbar": {
     "lang": "Select Language",
@@ -120,9 +121,27 @@
     "already": "This Pico is already installed with firmware. The process will be terminated.",
     "flashing": "Copying... Do not unplug!",
     "rebooting": "Waiting for reboot... Please wait.",
-    "progress": "In progress...",
     "library_install_prompt": "Now installing basic library and WiFi setup.",
     "port_selection_guide": "Reboot complete. Please select the Pico port.",
-    "library_installing": "Installing libraries..."
+    "library_installing": "Installing libraries...",
+    "select_connection": "Select Wireless Method",
+    "wifi_desc": "Connect via Wi-Fi AP (Default)",
+    "ble_desc": "Connect via Bluetooth (BLE) (Experimental)",
+    "ble_config_title": "BLE Mode Configured",
+    "ble_name_label": "BLE Name",
+    "ble_connect_guide": "Press the 'BT icon' in the toolbar to connect."
+  },
+  "ble": {
+    "scan": "Scan",
+    "stop_scan": "Stop Scan",
+    "connect": "Connect",
+    "web_desc": "On the web, we use the browser's native device picker.",
+    "web_guide": "Make sure your Pico W is in BLE mode and close to your computer.",
+    "open_picker": "Open Device Picker",
+    "scanning": "Scanning...",
+    "no_device": "No devices found. Try scanning again.",
+    "connect_failed": "Connection failed.",
+    "scan_failed": "Scan failed: {error}",
+    "web_bluetooth": "Web Bluetooth"
   }
 }

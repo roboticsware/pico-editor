@@ -13,10 +13,11 @@ import {
   IonToolbar, IonButtons, IonButton, IonIcon, 
   IonSpinner, actionSheetController
 } from '@ionic/vue';
+import BleDeviceModal from './BleDeviceModal.vue';
 import SetupGuideModal from './SetupGuideModal.vue';
 import { 
   play, square, download, folderOpen, save, 
-  globe, moon, sunny, flash, flashOff, wifi, hardwareChip
+  globe, moon, sunny, flash, flashOff, wifi, hardwareChip, bluetooth
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { toastController } from '@ionic/vue';
@@ -35,6 +36,7 @@ const isAndroid = Capacitor.getPlatform() === 'android';
 // Setup Modal State
 const showSetupModal = ref(false);
 const setupInitialStep = ref(1);
+const showBleModal = ref(false);
 
 // 업데이트 및 환경 관련
 const isElectron = !!window.ElectronUpdater;
@@ -165,6 +167,10 @@ const handleLangClick = async () => {
     ],
   });
   await actionSheet.present();
+};
+
+const handleBleSearch = async () => {
+    showBleModal.value = true;
 };
 
 // 부모를 중개자로 사용
@@ -466,14 +472,25 @@ async function handleUpload() {
     </ion-buttons>
 
     <ion-buttons slot="end">
+      <!-- BLE Search Button -->
+      <ion-button 
+        v-if="!serialStore.isConnected"
+        @click="handleBleSearch"
+        color="tertiary"
+        fill="clear"
+        title="Find BLE Device"
+      >
+        <ion-icon slot="icon-only" :icon="bluetooth"></ion-icon>
+      </ion-button>
+
       <ion-button 
         @click="handleConnectionToggle" 
         :fill="serialStore.isConnected ? 'outline' : 'clear'"
         :color="serialStore.isConnected ? 'success' : 'medium'"
         class="connection-btn"
-        :title="serialStore.isConnected ? (serialStore.connectionType === 'wifi' ? 'Connected via WiFi' : 'Connected via USB') : 'Connect'"
+        :title="serialStore.isConnected ? (serialStore.connectionType === 'wifi' ? 'Connected via WiFi' : (serialStore.connectionType === 'ble' ? 'Connected via BLE' : 'Connected via USB')) : 'Connect'"
       >
-        <ion-icon slot="start" :icon="serialStore.isConnected ? (serialStore.connectionType === 'wifi' ? wifi : hardwareChip) : flashOff"></ion-icon>
+        <ion-icon slot="start" :icon="serialStore.isConnected ? (serialStore.connectionType === 'wifi' ? wifi : (serialStore.connectionType === 'ble' ? bluetooth : hardwareChip)) : flashOff"></ion-icon>
         <span class="ion-hide-lg-down">{{ serialStore.isConnected ? $t('navbar.disconnect') : $t('navbar.connect') }}</span>
       </ion-button>
 
@@ -520,6 +537,11 @@ async function handleUpload() {
       :is-open="showSetupModal"
       :initial-step="setupInitialStep"
       @close="showSetupModal = false"
+  />
+
+  <BleDeviceModal
+      :is-open="showBleModal"
+      @close="showBleModal = false"
   />
 </template>
 

@@ -4,9 +4,11 @@ import { useI18n } from 'vue-i18n';
 import { 
   IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonButtons, 
   IonButton, IonText, IonBadge, IonIcon, IonProgressBar, IonSpinner,
-  IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonGrid, IonRow, IonCol
+  IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonGrid, IonRow, IonCol,
+  IonRadio, IonRadioGroup
 } from '@ionic/vue';
-import { flashOutline, warningOutline, checkmarkCircle, arrowForward, wifi } from 'ionicons/icons';
+import { flashOutline, warningOutline, checkmarkCircle, arrowForward, wifi, bluetooth } from 'ionicons/icons';
+
 
 // Import local assets
 import step1Img from '@/assets/step1.png';
@@ -40,6 +42,7 @@ const progress = ref(0);
 const statusMessage = ref('');
 const currentModelInfo = ref<{ id: string; isWireless: boolean } | null>(null);
 const picoIdSuffix = ref<string>('xxxx');
+const connectionMethod = ref<'wifi' | 'ble'>('wifi');
 
 const models = computed(() => [
   { id: 'pico', name: 'Pico', img: picoImg, firm: 'RPI_PICO-20251209-v1.27.0.uf2' },
@@ -56,8 +59,15 @@ watch(() => props.isOpen, (isOpen) => {
     isFlashing.value = false;
     progress.value = 0;
     statusMessage.value = '';
-    currentModelInfo.value = null;
     picoIdSuffix.value = 'xxxx';
+    connectionMethod.value = 'wifi';
+    
+    // If opening directly at Step 4 (e.g. from "Fix WiFi" flow), assume Wireless context
+    if (props.initialStep === 4) {
+         currentModelInfo.value = { id: 'pico_w', isWireless: true };
+    } else {
+         currentModelInfo.value = null;
+    }
   }
 });
 
@@ -100,7 +110,7 @@ const startInstallation = async () => {
   if (!model) return;
 
   isFlashing.value = true;
-  statusMessage.value = t('setup.progress'); // reset
+  statusMessage.value = t('common.progress'); // reset
   progress.value = 0.05;
 
   try {
@@ -138,13 +148,8 @@ const handleLibraryInstall = async () => {
   
   try {
     // If directly entering step 4 without model info, ensure we have defaults or prompts
-    // But typically this stores model info from previous step. 
-    // If independent entry is needed, we might need to assume or ask model.
-    // For now, assume flow or safe defaults.
     if (!currentModelInfo.value) {
-        // Fallback or error? 
-        // If independent, maybe we assume Pico W? Or disable this?
-        // Let's assume generic for library install (libraries are mostly same)
+        // Assume Pico W default if unknown
         currentModelInfo.value = { id: 'pico_w', isWireless: true };
     }
 
@@ -155,7 +160,6 @@ const handleLibraryInstall = async () => {
     // Web: Connect serial first (User action required)
     if (!isElectron) {
       // Trigger port picker
-      // If user cancels, serial.connect() throws an error (handled in catch)
       const connected = await serial.connect();
       if (!connected) return;
     }
@@ -163,12 +167,16 @@ const handleLibraryInstall = async () => {
     const idSuffix = await injectLibraries(currentModelInfo.value, (status: any) => {
       progress.value = status.progress;
       statusMessage.value = t(status.status);
-    }, isElectron);
+    }, isElectron, connectionMethod.value);
+    
     
     if (idSuffix) {
         picoIdSuffix.value = idSuffix;
         deviceStore.picoIdSuffix = idSuffix;
         localStorage.setItem('picoIdSuffix', idSuffix);
+        
+        // Save preference: 'ble' or 'wifi'
+        deviceStore.connectionTypePref = connectionMethod.value;
     }
 
     // Save model info
@@ -322,10 +330,29 @@ const handleDismiss = async () => {
               <ion-badge color="tertiary">{{ t('setup.step4_title') }}</ion-badge>
             </ion-card-header>
             <ion-card-content class="step-content">
-              <div class="img-wrapper">
+              <div class="img-wrapper" style="height: 150px;">
                 <img :src="step4Img" alt="Select Port" />
               </div>
-              <p v-html="t('setup.step4_desc')"></p>
+              
+              <!-- Connection Method Selection -->
+              <div class="connection-select ion-margin-top" v-if="currentModelInfo?.isWireless">
+                <ion-text color="dark">
+                  <p><strong>{{ t('setup.select_connection') }}</strong></p>
+                </ion-text>
+                <ion-radio-group v-model="connectionMethod">
+                  <div class="radio-item">
+                     <ion-radio value="wifi" label-placement="end">Wi-Fi (WebREPL)</ion-radio>
+                     <p class="radio-desc">{{ t('setup.wifi_desc') }}</p>
+                  </div>
+                  <div class="radio-item">
+                     <ion-radio value="ble" label-placement="end">Bluetooth (BLE)</ion-radio>
+                     <p class="radio-desc">{{ t('setup.ble_desc') }}</p>
+                  </div>
+                </ion-radio-group>
+              </div>
+
+              <ion-text class="ion-text-center"><p v-html="t('setup.step4_desc')" class="ion-margin-top"></p></ion-text>
+
               <ion-button expand="block" class="ion-margin-top" @click="handleLibraryInstall">
                   {{ t('setup.next') }}
                   <ion-icon slot="end" :icon="arrowForward" />
@@ -387,7 +414,7 @@ const handleDismiss = async () => {
           </ion-card-content>
         </ion-card>
 
-        <ion-card v-if="progress >= 1 && currentModelInfo?.isWireless" class="wifi-info-card">
+        <ion-card v-if="progress >= 1 && currentModelInfo?.isWireless && connectionMethod === 'wifi'" class="wifi-info-card">
           <ion-card-header>
             <ion-card-title class="ion-text-start" style="font-size: 1rem; display: flex; align-items: center;">
                 <ion-icon :icon="wifi" class="ion-margin-end"/> 
@@ -401,6 +428,21 @@ const handleDismiss = async () => {
               <li><strong>Password:</strong> pwd-{{ picoIdSuffix }}</li>
             </ul>
           </ion-card-content>
+        </ion-card>
+
+        <ion-card v-if="progress >= 1 && currentModelInfo?.isWireless && connectionMethod === 'ble'" class="ble-info-card">
+           <ion-card-header>
+             <ion-card-title class="ion-text-start" style="font-size: 1rem; display: flex; align-items: center;">
+                 <ion-icon :icon="bluetooth" class="ion-margin-end"/> 
+                 {{ t('setup.ble_config_title') }}
+             </ion-card-title>
+           </ion-card-header>
+           <ion-card-content class="ion-text-start">
+               <p style="font-size: 1.1em;"><strong>{{ t('setup.ble_name_label') }}:</strong> pico-{{ picoIdSuffix }}</p>
+               <p style="font-size: 0.9em; margin-top: 4px; opacity: 0.8;">
+                  {{ t('setup.ble_connect_guide') }}
+               </p>
+           </ion-card-content>
         </ion-card>
 
         <ion-button v-if="progress >= 1" expand="block" color="primary" @click="handleDismiss">

@@ -94,7 +94,7 @@ export const useSerialStore = defineStore('serial', () => {
   });
 
   // 공용 함수: 연결하기
-  async function connect(config?: { type?: ConnectionType; host?: string; port?: number; password?: string }) {
+  async function connect(config?: { type?: ConnectionType; host?: string; port?: number; password?: string, deviceId?: string }) {
     try {
       isManualDisconnect.value = false;
       if (config?.type) {
@@ -111,6 +111,7 @@ export const useSerialStore = defineStore('serial', () => {
         host: wifiConfig.value.host,
         port: wifiConfig.value.port,
         password: wifiConfig.value.password,
+        deviceId: config?.deviceId
       });
 
       if (success) {
@@ -227,7 +228,7 @@ export const useSerialStore = defineStore('serial', () => {
   async function run(code: string) {
     if (!isConnected.value) return;
 
-    if (connectionType.value === 'serial') {
+    if (connectionType.value === 'serial' || connectionType.value === 'wifi') {
       await checkAndInstallLibraries(code);
     }
 
@@ -295,7 +296,18 @@ export const useSerialStore = defineStore('serial', () => {
       let content = lib.content;
       if (!content) {
         try {
-          const res = await fetch(`/assets/libs/${lib.fileName}`);
+          let fileNameToFetch = lib.fileName;
+
+          // Special handling for boot.py
+          // If 'ble_uart' is installed, we assume the user wants BLE boot mode.
+          // Otherwise, default to WiFi boot mode.
+          if (lib.id === 'boot') {
+            const hasBle = !!remoteLibraryManifest.value['ble_uart'];
+            fileNameToFetch = hasBle ? 'boot_ble.py' : 'boot_wifi.py';
+            console.log(`[InstallLibrary] Selected boot script: ${fileNameToFetch} (BLE=${hasBle})`);
+          }
+
+          const res = await fetch(`/assets/libs/${fileNameToFetch}`);
           if (!res.ok) throw new Error(`Failed to load library: ${res.statusText}`);
           content = await res.text();
         } catch (e) {

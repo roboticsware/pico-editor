@@ -5,7 +5,7 @@ export interface Library {
   description: string;
   version: string;
   sourceUrl?: string; // 나중에 fetch()할 때 사용
-  content?: string;    // Assets에서 로드
+  content?: string;   // Assets에서 로드
 }
 
 export const AVAILABLE_LIBRARIES: Library[] = [
@@ -30,7 +30,15 @@ export const AVAILABLE_LIBRARIES: Library[] = [
     name: 'NeoSoCo Library',
     fileName: 'neosoco.py',
     description: 'Hardware control library for NeoSoCo board (PicoZero based)',
-    version: '1.0.3',
+    version: '1.0.0',
+    content: undefined // Load from assets
+  },
+  {
+    id: 'ble_uart',
+    name: 'BLE UART',
+    fileName: 'ble_uart.py',
+    description: 'Bluetooth Low Energy UART Helper',
+    version: '1.0.0',
     content: undefined // Load from assets
   },
   // 추가 라이브러리들...

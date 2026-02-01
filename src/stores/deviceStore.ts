@@ -1,6 +1,6 @@
 import { alertCustom, confirmCustom } from '@/services/modal-confirm';
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useLogStore } from './logStore';
 
@@ -55,6 +55,12 @@ export const useDeviceStore = defineStore('device', () => {
 
   const picoIdSuffix = ref(localStorage.getItem('picoIdSuffix') || '');
   const picoModel = ref(localStorage.getItem('picoModel') || '');
+  const connectionTypePref = ref(localStorage.getItem('connectionTypePref') || 'wifi');
+
+  watch(connectionTypePref, (newVal) => {
+    localStorage.setItem('connectionTypePref', newVal);
+  });
+
   // Background Auto-Scan Logic
   let scanInterval: any = null;
   const isScanning = ref(false);
@@ -113,7 +119,9 @@ export const useDeviceStore = defineStore('device', () => {
     // If already connected, skip
     const { useSerialStore } = await import('./serialStore');
     const serialStore = useSerialStore();
-    if (serialStore.isConnected) return;
+
+    // If connected OR if current mode is BLE, skip WiFi scan
+    if (serialStore.isConnected || serialStore.connectionType === 'ble') return;
 
     isAutoConnectBusy = true;
     try {
@@ -159,6 +167,13 @@ export const useDeviceStore = defineStore('device', () => {
 
   const startAutoScan = () => {
     if (scanInterval) clearInterval(scanInterval);
+
+    // If user explicitly prefers BLE, do NOT scan for WiFi
+    if (connectionTypePref.value === 'ble') {
+      isScanning.value = false;
+      return;
+    }
+
     isScanning.value = true;
     scanInterval = setInterval(attemptAutoConnect, 3000);
   };
@@ -171,9 +186,12 @@ export const useDeviceStore = defineStore('device', () => {
   };
 
   const triggerOneShotScan = async () => {
+    // If user explicitly prefers BLE, do NOT scan for WiFi
+    if (connectionTypePref.value === 'ble') return;
+
     console.log('Triggering one-shot WiFi scan...');
     await attemptAutoConnect();
   };
 
-  return { selectedDevice, fwStatusType, scanPicoFWstatus, picoIdSuffix, picoModel, startAutoScan, stopAutoScan, triggerOneShotScan };
+  return { selectedDevice, fwStatusType, scanPicoFWstatus, picoIdSuffix, picoModel, startAutoScan, stopAutoScan, triggerOneShotScan, connectionTypePref };
 });

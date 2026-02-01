@@ -15,7 +15,7 @@ export async function flashFirmware(
   const picoOps = (window as any).PicoOps;
 
   // Step 1: Download Firmware (10%)
-  onProgress({ progress: 0.1, status: 'setup.progress' });
+  onProgress({ progress: 0.1, status: 'common.progress' });
 
   try {
     const response = await fetch(`/assets/firmwares/${firmwareName}`);
@@ -24,7 +24,7 @@ export async function flashFirmware(
     const blob = await response.blob();
     const arrayBuffer = await blob.arrayBuffer();
 
-    onProgress({ progress: 0.2, status: 'setup.progress' });
+    onProgress({ progress: 0.2, status: 'common.progress' });
 
     // Step 2: Flash UF2 Firmware (20% - 50%)
     if (picoOps) { // --- Electron(Direct Copy via IPC) ---
@@ -75,7 +75,7 @@ export async function flashFirmware(
 
       // Step 3: Wait for reboot (50% - 60%)
       onProgress({ progress: 0.55, status: 'setup.rebooting' });
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Stop at 60% - return control to modal for port selection guidance
       onProgress({ progress: 0.6, status: 'setup.fcomplete' });
@@ -95,7 +95,8 @@ export async function flashFirmware(
 export async function injectLibraries(
   modelInfo: ModelInfo,
   onProgress: (p: FlashProgress) => void,
-  isElectron: boolean = false
+  isElectron: boolean = false,
+  connectionType: 'wifi' | 'ble' = 'wifi'
 ): Promise<string | undefined> {
   let uniqueIdSuffix: string | undefined;
 
@@ -174,10 +175,16 @@ except:
     // Fetch Unique ID if wireless (needed for UI return)
     if (modelInfo.isWireless) {
       try {
-        const cmd = "import machine, binascii; print(binascii.hexlify(machine.unique_id()).decode()[-4:])";
+        const cmd = "import machine, ubinascii; print(ubinascii.hexlify(machine.unique_id()).decode()[-4:])";
         const result = await serial.executeCommand(cmd);
-        if (result && result.length === 4) {
-          uniqueIdSuffix = result;
+        console.log(`[Unique ID Fetch] Raw result: '${result}'`);
+
+        const cleanId = (result || '').trim();
+        if (cleanId.match(/^[0-9a-f]{4}$/i)) {
+          uniqueIdSuffix = cleanId.toLowerCase();
+          console.log(`[Unique ID Fetch] Parsed: ${uniqueIdSuffix}`);
+        } else {
+          console.warn(`[Unique ID Fetch] Invalid format: ${cleanId}`);
         }
       } catch (e) {
         console.warn("Failed to fetch unique ID", e);
@@ -192,40 +199,80 @@ except:
 
     let index = 0;
     for (const lib of AVAILABLE_LIBRARIES) {
-      index++;
+      // Loop is 0-indexed for calculation
+      const currentStepStart = progressStart + (index * step);
 
       // Skip boot if not wireless
-      if (lib.id === 'boot' && !modelInfo.isWireless) continue;
+      if (lib.id === 'boot' && !modelInfo.isWireless) {
+        index++;
+        continue;
+      }
 
-      const needsUpdate = isHigherVersion(lib.version, currentManifest[lib.id]);
+      // Skip BLE-only libraries if not BLE
+      if (lib.id === 'ble_uart' && connectionType !== 'ble') {
+        index++;
+        continue;
+      }
+
+      let needsUpdate = isHigherVersion(lib.version, currentManifest[lib.id]);
+
+      // Special check for boot.py variant (wifi vs ble)
+      if (lib.id === 'boot') {
+        // ALWAYS update boot script when running Setup Wizard (injectLibraries)
+        // This ensures the user gets the selected mode (WiFi/BLE) even if versions match.
+        // It also allows repairing a corrupted boot script by re-running setup.
+        needsUpdate = true;
+
+        const storedVer = currentManifest[lib.id] || '';
+        if (!storedVer.includes(`+${connectionType}`)) {
+          console.log(`Boot script switching mode. Stored: ${storedVer} -> +${connectionType}`);
+        }
+      }
 
       if (needsUpdate) {
         console.log(`Updating ${lib.name}: ${currentManifest[lib.id] || 'None'} -> ${lib.version}`);
 
         try {
-          const res = await fetch(`/assets/libs/${lib.fileName}`);
-          if (!res.ok) throw new Error(`Failed to fetch ${lib.fileName}`);
+          let fileNameToFetch = lib.fileName;
+
+          if (lib.id === 'boot') {
+            if (connectionType === 'ble') {
+              fileNameToFetch = 'boot_ble.py';
+            } else {
+              fileNameToFetch = 'boot_wifi.py'; // WiFi (Default)
+            }
+          }
+
+          const res = await fetch(`/assets/libs/${fileNameToFetch}`);
+          if (!res.ok) throw new Error(`Failed to fetch ${fileNameToFetch}`);
           const code = await res.text();
 
           let targetPath = `/lib/${lib.fileName}`;
-          if (lib.id === 'boot') targetPath = 'boot.py'; // boot.py must be in root
+          if (lib.id === 'boot') targetPath = 'boot.py';
 
-          // Safety: If installing to /lib, check if the file exists in root and delete it to prevent shadowing
           if (targetPath.startsWith('/lib/')) {
             try {
-              // Checking list is expensive. execute 'os.remove' wrapped in try-except is cheapest.
               await serial.executeCommand(`
 try:
     os.remove('${lib.fileName}')
-    print("Deleted root copy of ${lib.fileName}")
 except:
     pass
 `);
             } catch (e) { /* ignore */ }
           }
 
-          await serial.uploadFile(targetPath, code, undefined, false);
-          currentManifest[lib.id] = lib.version;
+          await serial.uploadFile(targetPath, code, (filePct) => {
+            const globalPct = currentStepStart + ((filePct / 100) * step);
+            onProgress({ progress: globalPct, status: 'setup.library_installing' });
+          }, false);
+
+          if (lib.id === 'boot') {
+            // Append variant to version string for tracking
+            currentManifest[lib.id] = `${lib.version}+${connectionType}`;
+          } else {
+            currentManifest[lib.id] = lib.version;
+          }
+
         } catch (fetchErr) {
           console.error(`Failed to install ${lib.name}`, fetchErr);
         }
@@ -233,14 +280,14 @@ except:
         console.log(`${lib.name} is up to date (${lib.version}). Skipping.`);
       }
 
+      index++;
+      // Ensure we hit the exact step end
       onProgress({ progress: progressStart + (index * step), status: 'setup.library_installing' });
     }
 
-    // If wireless, install webrepl_cfg.py (static config)
-    if (modelInfo.isWireless) {
-      // Webrepl is static config usually
-      // We install it if boot was checked (implies wireless setup flow), or just always for wireless?
-      // Existing logic installed it always for wireless.
+    // If wireless (WiFi), install webrepl_cfg.py (static config)
+    // For BLE we don't need webrepl_cfg
+    if (modelInfo.isWireless && connectionType === 'wifi') {
       try {
         const webreplRes = await fetch('/assets/libs/webrepl_cfg.py');
         if (webreplRes.ok) {

@@ -6,7 +6,8 @@
     "error": "오류",
     "select": "선택",
     "dontShowAgain": "다음에 다시 보지 않음",
-    "close": "닫기"
+    "close": "닫기",
+    "progress": "진행 중..."
   },
   "navbar": {
     "lang": "언어 선택",
@@ -120,9 +121,27 @@
     "already": "이미 펌웨어가 탑재된 피코입니다. 과정을 종료합니다.",
     "flashing": "복사 중... 케이블을 뽑지 마세요!",
     "rebooting": "재부팅 대기 중... 잠시만 기다려주세요.",
-    "progress": "진행 중...",
     "library_install_prompt": "이어서 기본 라이브러리 설치와 무선설정 시작합니다",
     "port_selection_guide": "재부팅이 완료되었습니다. Pico 포트를 선택해주세요.",
-    "library_installing": "라이브러리 설치 중..."
+    "library_installing": "라이브러리 설치 중...",
+    "select_connection": "무선 연결 방식 선택",
+    "wifi_desc": "WiFi AP 모드로 연결 (기본)",
+    "ble_desc": "블루투스(BLE)로 연결 (실험적 기능)",
+    "ble_config_title": "BLE 모드 설정됨",
+    "ble_name_label": "BLE 이름",
+    "ble_connect_guide": "툴바의 '블루투스 아이콘'을 눌러 연결하세요."
+  },
+  "ble": {
+    "scan": "장치 검색",
+    "stop_scan": "검색 중지",
+    "connect": "연결",
+    "web_desc": "웹에서는 브라우저의 기본 장치 선택기를 사용합니다.",
+    "web_guide": "Pico W가 BLE 모드인지 확인하고 컴퓨터 가까이에 두세요.",
+    "open_picker": "장치 선택기 열기",
+    "scanning": "검색 중...",
+    "no_device": "장치를 찾을 수 없습니다. 다시 검색해보세요.",
+    "connect_failed": "연결에 실패했습니다.",
+    "scan_failed": "검색 실패: {error}",
+    "web_bluetooth": "웹 블루투스"
   }
 }

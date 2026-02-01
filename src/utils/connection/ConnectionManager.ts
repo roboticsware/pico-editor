@@ -1,15 +1,17 @@
 import type { Transport } from '../../types/transport';
 import { SerialTransport } from './SerialTransport';
 import { WebSocketTransport } from './WebSocketTransport';
+import { BleTransport } from './BleTransport';
 import { AndroidSerialTransport } from './AndroidSerialTransport';
 import { Capacitor } from '@capacitor/core';
 
-export type ConnectionType = 'serial' | 'wifi';
+export type ConnectionType = 'serial' | 'wifi' | 'ble';
 
 export class ConnectionManager {
     private transport: Transport;
     private serialTransport: Transport;
     private wsTransport: WebSocketTransport;
+    private bleTransport: BleTransport;
     private activeType: ConnectionType = 'serial';
 
     private incomingBuffer: string = "";
@@ -23,11 +25,13 @@ export class ConnectionManager {
         }
 
         this.wsTransport = new WebSocketTransport();
+        this.bleTransport = new BleTransport();
         this.transport = this.serialTransport; // Default
 
         // Bind listeners
         this.setupTransportListeners(this.serialTransport);
         this.setupTransportListeners(this.wsTransport);
+        this.setupTransportListeners(this.bleTransport);
     }
 
     private setupTransportListeners(transport: Transport) {
@@ -41,8 +45,9 @@ export class ConnectionManager {
             }
         });
 
-        // disconnect handler...
-        // We might bubble this up
+        transport.onDisconnect(() => {
+            // We can handle global disconnect logic here
+        });
     }
 
     setLogListener(callback: (data: string) => void) {
@@ -52,10 +57,15 @@ export class ConnectionManager {
     setDisconnectListener(callback: () => void) {
         this.serialTransport.onDisconnect(callback);
         this.wsTransport.onDisconnect(callback);
+        this.bleTransport.onDisconnect(callback);
     }
 
     get isConnected() {
         return this.transport.isConnected;
+    }
+
+    get connectionType() {
+        return this.activeType;
     }
 
     // API to switch modes
@@ -63,8 +73,10 @@ export class ConnectionManager {
         this.activeType = type;
         if (type === 'serial') {
             this.transport = this.serialTransport;
-        } else {
+        } else if (type === 'wifi') {
             this.transport = this.wsTransport;
+        } else if (type === 'ble') {
+            this.transport = this.bleTransport;
         }
     }
 

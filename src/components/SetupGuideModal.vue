@@ -44,6 +44,10 @@ const currentModelInfo = ref<{ id: string; isWireless: boolean } | null>(null);
 const picoIdSuffix = ref<string>('xxxx');
 const connectionMethod = ref<'wifi' | 'ble'>('wifi');
 
+// State for Web Nuke Re-selection
+const waitingForReSelect = ref(false);
+let reSelectResolve: ((handle: any) => void) | null = null;
+
 const models = computed(() => [
   { id: 'pico', name: 'Pico', img: picoImg, firm: 'RPI_PICO-20251209-v1.27.0.uf2' },
   { id: 'pico_w', name: 'Pico W', img: picoWImg, firm: 'RPI_PICO_W-20251209-v1.27.0.uf2' },
@@ -121,16 +125,22 @@ const startInstallation = async () => {
     await flashFirmware(model.firm, (status) => {
        progress.value = status.progress;
        statusMessage.value = t(status.status); 
+    }, {
+        getNextDriveHandle: async () => {
+            // Pause here and wait for user interaction
+            waitingForReSelect.value = true;
+            return new Promise((resolve) => {
+                reSelectResolve = resolve;
+            });
+        }
     });
 
     // Flashing complete at 60%
-    // Show platform-specific intermediate screen
     isFlashing.value = false;
     currentStep.value = 4;
 
   } catch (err: any) {
     console.error(err);
-    // If err message is a translation key
     const msg = err.message || 'common.error';
     statusMessage.value = (msg.startsWith('setup.') || msg.startsWith('common.'))
        ? t(msg) 
@@ -139,8 +149,32 @@ const startInstallation = async () => {
     setTimeout(() => {
         isFlashing.value = false;
         progress.value = 0;
+        waitingForReSelect.value = false; // Reset
     }, 3000);
   }
+};
+
+const handleReSelectDrive = async () => {
+    try {
+        if (!('showDirectoryPicker' in window)) return;
+        
+        // This is called directly from user click, satisfying security requirements
+        const handle = await (window as any).showDirectoryPicker({
+            id: 'pico-firmware-install',
+            mode: 'readwrite',
+            startIn: 'desktop'
+        });
+        
+        if (handle && reSelectResolve) {
+            waitingForReSelect.value = false;
+            reSelectResolve(handle);
+            reSelectResolve = null;
+        }
+    } catch (e) {
+        console.error("Drive selection cancelled or failed", e);
+        // We could handle cancellations by rejecting the promise, 
+        // but flashFirmware will throw if handle is null anyway.
+    }
 };
 
 const handleLibraryInstall = async () => {
@@ -159,6 +193,9 @@ const handleLibraryInstall = async () => {
 
     // Web: Connect serial first (User action required)
     if (!isElectron) {
+      // Force USB Serial transport (in case previously in WiFi/BLE mode)
+      serial.useTransport('serial');
+      
       // Trigger port picker
       const connected = await serial.connect();
       if (!connected) return;
@@ -274,7 +311,7 @@ const handleDismiss = async () => {
               <ion-badge color="warning">{{ t('setup.step3_title') }}</ion-badge>
             </ion-card-header>
             <ion-card-content>
-              <p class="ready-text">{{ t('setup.step3_desc') }}</p>
+              <p v-html="t('setup.step3_desc')"></p>
               
               <ion-grid class="model-grid">
                 <ion-row>
@@ -448,6 +485,26 @@ const handleDismiss = async () => {
         <ion-button v-if="progress >= 1" expand="block" color="primary" @click="handleDismiss">
           {{ t('setup.success_btn') }}
         </ion-button>
+
+        <!-- Drive Re-selection Overlay for Nuke Flow -->
+        <div v-if="waitingForReSelect" class="reselect-overlay">
+           <ion-card class="reselect-card">
+              <ion-card-header>
+                <ion-badge color="warning">{{ t('common.notice') }}</ion-badge>
+              </ion-card-header>
+              <ion-card-content>
+                 <div class="status-icon-box ion-margin-bottom">
+                    <ion-icon :icon="warningOutline" size="large" color="warning"></ion-icon>
+                 </div>
+                 <p class="ion-margin-bottom" style="font-size: 1.1em; font-weight: bold;">
+                    {{ t('setup.reselect_drive') }}
+                 </p>
+                 <ion-button expand="block" @click="handleReSelectDrive">
+                    {{ t('setup.select_drive') }}
+                 </ion-button>
+              </ion-card-content>
+           </ion-card>
+        </div>
       </div>
 
     </ion-content>
@@ -577,5 +634,24 @@ const handleDismiss = async () => {
 ion-progress-bar {
   height: 12px;
   border-radius: 6px;
+}
+
+.reselect-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(var(--ion-background-color-rgb), 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.reselect-card {
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
 </style>

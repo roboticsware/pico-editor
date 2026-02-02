@@ -41,5 +41,13 @@ export const AVAILABLE_LIBRARIES: Library[] = [
     version: '1.0.0',
     content: undefined // Load from assets
   },
+  {
+    id: 'nec',
+    name: 'NEC Library',
+    fileName: 'nec.py',
+    description: 'NEC IR Protocol Library (Integrated)',
+    version: '1.0.0',
+    content: undefined
+  },
   // 추가 라이브러리들...
 ];

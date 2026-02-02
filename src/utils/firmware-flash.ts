@@ -10,28 +10,37 @@ interface ModelInfo {
 
 export async function flashFirmware(
   firmwareName: string,
-  onProgress: (p: FlashProgress) => void
+  onProgress: (p: FlashProgress) => void,
+  actions?: { getNextDriveHandle?: () => Promise<any> }
 ): Promise<void> {
   const picoOps = (window as any).PicoOps;
+  const nukeName = 'flash_nuke.uf2';
 
-  // Step 1: Download Firmware (10%)
-  onProgress({ progress: 0.1, status: 'common.progress' });
+  // Step 1: Download Nuke and Target Firmware (10%)
+  onProgress({ progress: 0.05, status: 'common.progress' });
+
+  let nukeBuffer: ArrayBuffer;
+  let firmwareBuffer: ArrayBuffer;
 
   try {
-    const response = await fetch(`/assets/firmwares/${firmwareName}`);
-    if (!response.ok) throw new Error(`Download failed: ${response.statusText}`);
+    const [nukeRes, firmRes] = await Promise.all([
+      fetch(`/assets/firmwares/${nukeName}`),
+      fetch(`/assets/firmwares/${firmwareName}`)
+    ]);
 
-    const blob = await response.blob();
-    const arrayBuffer = await blob.arrayBuffer();
+    if (!nukeRes.ok) throw new Error(`Download failed: ${nukeName}`);
+    if (!firmRes.ok) throw new Error(`Download failed: ${firmwareName}`);
 
-    onProgress({ progress: 0.2, status: 'common.progress' });
+    nukeBuffer = await nukeRes.arrayBuffer();
+    firmwareBuffer = await firmRes.arrayBuffer();
 
-    // Step 2: Flash UF2 Firmware (20% - 50%)
-    if (picoOps) { // --- Electron(Direct Copy via IPC) ---
-      onProgress({ progress: 0.3, status: 'setup.flashing' });
+    onProgress({ progress: 0.1, status: 'common.progress' });
 
-      const result = await picoOps.flashFirmware(arrayBuffer, firmwareName);
-
+    // --- Electron Flow (Direct Copy via IPC) ---
+    if (picoOps) {
+      // 1. Flash Nuke
+      onProgress({ progress: 0.15, status: 'setup.nuking' });
+      let result = await picoOps.flashFirmware(nukeBuffer, nukeName);
       if (!result.success) {
         if (result.error && result.error.includes('drive not found')) {
           throw new Error('setup.drive_error');
@@ -39,49 +48,105 @@ export async function flashFirmware(
         throw new Error(result.error);
       }
 
+      // 2. Wait for Nuke Reboot and Re-enumeration
+      onProgress({ progress: 0.25, status: 'setup.rebooting' });
+      // Nuke reboots quickly, but we need to wait for drive to reappear.
+      // Give it extra time (e.g. 5-7 seconds)
+      await new Promise(resolve => setTimeout(resolve, 6000));
+
+      // 3. Flash Actual Firmware
+      onProgress({ progress: 0.35, status: 'setup.flashing' });
+
+      // We might need to retry if the drive hasn't mounted yet
+      let retries = 3;
+      while (retries > 0) {
+        result = await picoOps.flashFirmware(firmwareBuffer, firmwareName);
+        if (result.success) break;
+        if (result.error && result.error.includes('drive not found')) {
+          // Wait and retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          retries--;
+        } else {
+          throw new Error(result.error);
+        }
+      }
+
+      if (!result.success) throw new Error('setup.drive_error');
+
       onProgress({ progress: 0.5, status: 'setup.flashing' });
 
-      // Step 3: Wait for Pico to reboot and enumerate (50% - 60%)
+      // 4. Wait for Final Reboot
       onProgress({ progress: 0.55, status: 'setup.rebooting' });
-      await new Promise(resolve => setTimeout(resolve, 15000)); // Wait for device
+      await new Promise(resolve => setTimeout(resolve, 8000));
 
-      // Stop at 60% - return control to modal for intermediate confirm screen
       onProgress({ progress: 0.6, status: 'setup.f_complete' });
 
-    } else { // --- Web (FileSystem Access API) ---
+    } else {
+      // --- Web Flow (FileSystem Access API) ---
       if (!('showDirectoryPicker' in window)) {
         throw new Error('File System Access API not supported');
       }
 
-      onProgress({ progress: 0.3, status: 'setup.select_drive' });
-
-      const dirHandle = await (window as any).showDirectoryPicker({
+      // 1. Select Drive for Nuke
+      onProgress({ progress: 0.15, status: 'setup.select_drive' });
+      let dirHandle = await (window as any).showDirectoryPicker({
         id: 'pico-firmware-install',
         mode: 'readwrite',
         startIn: 'desktop'
       });
+      if (!dirHandle) throw new Error('setup.drive_error');
+
+      // 2. Flash Nuke
+      onProgress({ progress: 0.20, status: 'setup.nuking' });
+      try {
+        let fileHandle = await dirHandle.getFileHandle(nukeName, { create: true });
+        let writable = await fileHandle.createWritable();
+        await writable.write(nukeBuffer);
+        await writable.close();
+      } catch (e: any) {
+        // Nuke causes immediate reboot, so write/close might fail with NotFoundError.
+        // We consider this a success if we wrote the buffer.
+        console.log('Nuke write ended (expected reboot):', e);
+      }
+
+      // 3. Wait for Reboot
+      onProgress({ progress: 0.30, status: 'setup.rebooting' });
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      // 4. Request Re-selection via Callback (Crucial for User Gesture)
+      onProgress({ progress: 0.35, status: 'setup.reselect_drive' }); // Update status text
+
+      if (actions?.getNextDriveHandle) {
+        dirHandle = await actions.getNextDriveHandle();
+      } else {
+        // Fallback (likely fails security check, but keeps type safety)
+        dirHandle = await (window as any).showDirectoryPicker({
+          id: 'pico-firmware-install',
+          mode: 'readwrite',
+          startIn: 'desktop'
+        });
+      }
 
       if (!dirHandle) throw new Error('setup.drive_error');
 
-      onProgress({ progress: 0.4, status: 'setup.flashing' });
+      // 6. Flash Firmware
+      onProgress({ progress: 0.45, status: 'setup.flashing' });
+      let fileHandle = await dirHandle.getFileHandle(firmwareName, { create: true });
+      let writable = await fileHandle.createWritable();
+      await writable.write(firmwareBuffer);
+      try {
+        await writable.close();
+      } catch (e) {
+        console.log('Firmware write closed (rebooting):', e);
+      }
 
-      // Flash UF2
-      const fileHandle = await dirHandle.getFileHandle(firmwareName, { create: true });
-      const writable = await fileHandle.createWritable();
-      await writable.write(arrayBuffer);
-      await writable.close();
-
-      onProgress({ progress: 0.5, status: 'setup.flashing' });
-
-      // Step 3: Wait for reboot (50% - 60%)
+      // 7. Wait for Final Reboot
       onProgress({ progress: 0.55, status: 'setup.rebooting' });
       await new Promise(resolve => setTimeout(resolve, 5000));
 
-      // Stop at 60% - return control to modal for port selection guidance
-      onProgress({ progress: 0.6, status: 'setup.fcomplete' });
+      onProgress({ progress: 0.6, status: 'setup.f_complete' });
     }
   } catch (err: any) {
-    // Check for AbortError (cancelled) or NotFoundError (drive disconnected/not found)
     if (err.name === 'AbortError' || err.name === 'NotFoundError') {
       throw new Error('setup.drive_error');
     }

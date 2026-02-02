@@ -12,12 +12,13 @@ import { useI18n } from 'vue-i18n';
 import { 
   IonToolbar, IonButtons, IonButton, IonIcon, IonBadge 
 } from '@ionic/vue';
-import { codeSlash, save } from 'ionicons/icons';
+import { codeSlash, save, add, remove } from 'ionicons/icons';
 
 const { t } = useI18n();
 const codeStore = useCodeStore();
 const themeStore = useThemeStore();
 const editorContainer = ref<HTMLElement | null>(null);
+const fontSize = ref(14);
 let view: EditorView | null = null;
 const themeCompartment = new Compartment();
 const shadowThemeCompartment = new Compartment();
@@ -26,7 +27,7 @@ const shadowThemeCompartment = new Compartment();
 const getShadowTheme = (isDark: boolean) => EditorView.theme({
   "&": {
     height: "100%",
-    fontSize: "14px",
+    fontSize: `${fontSize.value}px`,
     backgroundColor: "var(--editor-bg)"
   },
   ".cm-scroller": {
@@ -58,6 +59,19 @@ const focusTextEditor = () => {
     view.dispatch({ selection: { head: view.state.doc.length, anchor: view.state.doc.length } });
   }
 };
+
+const changeFontSize = (delta: number) => {
+  const newSize = fontSize.value + delta;
+  if (newSize >= 10 && newSize <= 30) {
+    fontSize.value = newSize;
+    if (view) {
+      view.dispatch({
+        effects: shadowThemeCompartment.reconfigure(getShadowTheme(themeStore.isDarkMode))
+      });
+    }
+  }
+};
+
 defineExpose({ focusTextEditor });
 
 // 스토어 업데이트 중인지 확인하는 플래그 (무한 루프 방지)
@@ -189,6 +203,12 @@ watch(() => codeStore.pythonCode, (newCode) => {
           <ion-badge v-if="codeStore.isManualEditing" color="warning" class="status-badge">{{ $t('editor.modified') }}</ion-badge>
         </ion-buttons>
         <ion-buttons slot="end">
+          <ion-button fill="clear" @click="changeFontSize(1)">
+            <ion-icon :icon="add" slot="icon-only"></ion-icon>
+          </ion-button>
+          <ion-button fill="clear" @click="changeFontSize(-1)">
+            <ion-icon :icon="remove" slot="icon-only"></ion-icon>
+          </ion-button>
           <ion-button fill="clear" class="header-action-btn" @click="saveToFile()">
             <ion-icon :icon="save" slot="start"></ion-icon>
             {{ $t('editor.saveToFile') }}

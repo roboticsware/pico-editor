@@ -119,13 +119,13 @@ const themeConfig = {
     }
   },
   'categoryStyles': {
-    'basic_category': { 'colour': '#ff0066' },
+    'basic_category': { 'colour': '#E91E63' },
     'logic_category': { 'colour': '#38bdf8' },
     'loop_category': { 'colour': '#818cf8' },
     'math_category': { 'colour': '#34d399' },
     'variable_category': { 'colour': '#fbbf24' },
     'procedure_category': { 'colour': '#f472b6' },
-    'hardware_category': { 'colour': '#673ab7' }
+    'hardware_category': { 'colour': '#6200EA' }
   },
   'componentStyles': {
     'insertionMarkerColour': '#000000',
@@ -445,6 +445,22 @@ onUnmounted(() => {
     font-weight: 700;
     font-family: var(--app-font-main);
     letter-spacing: 0.2px;
+  }
+
+  /* Root level categories (Basic, NeoSoCo) */
+  :deep(.blocklyTreeRow[aria-level="1"]) {
+    height: 50px !important;
+    margin-top: 10px !important;
+    margin-bottom: 4px !important;
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid var(--ion-border-color) !important;
+  }
+  
+  :deep(.blocklyTreeRow[aria-level="1"]) .blocklyTreeLabel {
+    font-size: 1.1rem !important; /* Bigger */
+    font-weight: 900 !important; /* Bolder */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   /* 블록 목록 창(Flyout) 배경 */

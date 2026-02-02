@@ -23,7 +23,7 @@ const logStore = useLogStore();
 const deviceStore = useDeviceStore();
 const { t } = useI18n();
 
-const isNative = Capacitor.isNativePlatform();
+const isNative = Capacitor.isNativePlatform()
 const isScanning = ref(false);
 const scannedDevices = ref<ScanResult[]>([]);
 const isConnecting = ref(false);
@@ -88,11 +88,14 @@ const startScan = async () => {
 
 const stopScan = async () => {
    if (!isNative) return;
+   
+   // Update UI immediately to prevent hanging if plugin fails to respond
+   isScanning.value = false;
+
    try {
        await BleClient.stopLEScan();
-       isScanning.value = false;
    } catch (e) {
-       console.warn(e);
+       console.warn('Stop scan failed', e);
    }
 };
 

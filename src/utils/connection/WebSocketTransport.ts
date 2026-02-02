@@ -7,6 +7,7 @@ export class WebSocketTransport implements Transport {
     public isConnected = false;
 
     async connect(options: { host: string; port: number; password?: string }): Promise<boolean> {
+        if (!options) throw new Error('Missing connection options');
         const url = `ws://${options.host}:${options.port}/`;
         this.ws = new WebSocket(url);
         this.ws.binaryType = 'arraybuffer';

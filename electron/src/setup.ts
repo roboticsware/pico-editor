@@ -139,6 +139,42 @@ export class ElectronCapacitorApp {
       this.MainWindow.setBackgroundColor(this.CapacitorFileConfig.electron.backgroundColor);
     }
 
+    // Enable Web Bluetooth & Experimental Features
+    app.commandLine.appendSwitch('enable-experimental-web-platform-features');
+    app.commandLine.appendSwitch('enable-web-bluetooth', 'true');
+
+    // Configure Bluetooth Device Selection Handler
+    this.MainWindow.webContents.on('select-bluetooth-device', (event, deviceList, callback) => {
+      event.preventDefault();
+      logToRenderer(this.MainWindow, '[Electron BLE]: Device Selection Triggered', deviceList);
+
+      // Auto-select the first device that matches our filters (usually 'pico-...')
+      // Note: This simple logic picks the first found device. 
+      // For a proper picker, we would need to send this list to the renderer.
+      // But since we are using 'requestLEScan' (Scanning UI in Renderer), 
+      // this 'select-bluetooth-device' might not even be hit if the plugin handles scanning manually via the experimental API.
+      // However, if the plugin uses 'requestDevice' internally, this is needed.
+
+      const result = deviceList.find((device) => {
+        return device.deviceName.toLowerCase().includes('pico') ||
+          device.deviceId.toLowerCase().includes('pico');
+      });
+
+      if (result) {
+        callback(result.deviceId);
+      } else {
+        // If no auto-match, typically we'd cancel or wait. 
+        // Returning empty string cancels.
+        // callback(''); 
+        // For now, let's select the first one if available to test connectivity, or log it.
+        if (deviceList.length > 0) {
+          callback(deviceList[0].deviceId);
+        } else {
+          callback('');
+        }
+      }
+    });
+
     // If we close the main window with the splashscreen enabled we need to destory the ref.
     this.MainWindow.on('closed', () => {
       if (this.SplashScreen?.getSplashWindow() && !this.SplashScreen.getSplashWindow().isDestroyed()) {

@@ -21,7 +21,7 @@ export class BleTransport implements Transport {
     private disconnectCallback: (() => void) | null = null;
 
     isConnected: boolean = false;
-    private isNative = Capacitor.isNativePlatform();
+    private isNative = Capacitor.isNativePlatform() && !navigator.userAgent.includes('Electron');
     private isIntentionallyDisconnected = false; // 수동 종료인지 확인
 
     async connect(options?: any): Promise<boolean> {
@@ -75,7 +75,9 @@ export class BleTransport implements Transport {
                 }
 
                 // 이미 장치가 있고 gatt가 있다면 재사용 시도
-                if (!this.device) {
+                if (options?.device) {
+                    this.device = options.device;
+                } else if (!this.device) {
                     this.device = await nav.bluetooth.requestDevice({
                         filters: [{ namePrefix: 'pico-' }, { services: [NUS_SERVICE_UUID] }],
                         optionalServices: [NUS_SERVICE_UUID]

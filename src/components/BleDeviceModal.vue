@@ -23,7 +23,8 @@ const logStore = useLogStore();
 const deviceStore = useDeviceStore();
 const { t } = useI18n();
 
-const isNative = Capacitor.isNativePlatform()
+const isElectron = navigator.userAgent.includes('Electron');
+const isNative = Capacitor.isNativePlatform() && !isElectron;
 const isScanning = ref(false);
 const scannedDevices = ref<ScanResult[]>([]);
 const isConnecting = ref(false);
@@ -36,7 +37,7 @@ watch(() => props.isOpen, async (newVal) => {
     scannedDevices.value = [];
     isConnecting.value = false;
     
-    if (isNative) {
+    if (isNative || isElectron) {
       await startScan();
     }
   } else {
@@ -49,12 +50,60 @@ watch(() => props.isOpen, async (newVal) => {
 
 onUnmounted(() => {
   if (isScanning.value) stopScan();
+  if (isElectron) {
+      (window as any).ElectronBLE?.removeListener();
+  }
 });
 
 const startScan = async () => {
+    // --- Electron Scan Flow ---
+    if (isElectron) {
+        isScanning.value = true;
+        scannedDevices.value = [];
+        
+        // Listen for devices from Main Process
+        (window as any).ElectronBLE?.onDeviceList((devices: any[]) => {
+             // Adapt Electron device format to ScanResult if needed
+             // Electron returns: { deviceId, deviceName, ... }
+             // ScanResult: { device: { deviceId, name }, localName, rssi }
+             scannedDevices.value = devices.map(d => ({
+                 device: { deviceId: d.deviceId, name: d.deviceName },
+                 localName: d.deviceName,
+                 rssi: d.rssi || -50 // Dummy RSSI if missing
+             }));
+        });
+
+        try {
+            // Trigger the request. This will 'hang' until user selects via IPC.
+            // We request the device here, but the UI is populated by the listener above.
+            const device = await (navigator as any).bluetooth.requestDevice({
+                filters: [
+                    { services: [NUS_SERVICE_UUID] },
+                    { namePrefix: 'Pico' },
+                    { namePrefix: 'pico' }
+                ],
+                optionalServices: [NUS_SERVICE_UUID]
+            });
+            
+            // If we get here, selection was successful!
+            // Proceed to connect immediately
+            await connectToDevice(device);
+
+        } catch (e) {
+            console.warn("Scan cancelled or failed", e);
+            isScanning.value = false;
+        }
+        return;
+    }
+
+    // --- Native Scan Flow ---
     if (!isNative) return;
     try {
         await BleClient.initialize();
+        
+        // Robustness: Ensure any previous scan is stopped before starting
+        try { await BleClient.stopLEScan(); } catch {}
+
         isScanning.value = true;
         scannedDevices.value = [];
         
@@ -87,11 +136,16 @@ const startScan = async () => {
 };
 
 const stopScan = async () => {
-   if (!isNative) return;
-   
-   // Update UI immediately to prevent hanging if plugin fails to respond
    isScanning.value = false;
 
+   if (isElectron) {
+       // Send empty selection to cancel the requestDevice promise in Main
+       (window as any).ElectronBLE?.selectDevice('');
+       return;
+   }
+
+   if (!isNative) return;
+   
    try {
        await BleClient.stopLEScan();
    } catch (e) {
@@ -99,31 +153,48 @@ const stopScan = async () => {
    }
 };
 
+// Called when user clicks a row
 const handleConnect = async (deviceId?: string) => {
     isConnecting.value = true;
+    
+    if (isElectron && deviceId) {
+        // Just signal the main process. 
+        // The 'startScan' promise will resolve with the device object.
+        (window as any).ElectronBLE?.selectDevice(deviceId);
+        return;
+    }
+
+    // Native flow
     if (isNative && isScanning.value) {
         await stopScan();
     }
+    
+    // Web flow (Connect button in fallback UI)
+    // or Native flow
+    connectToDevice(undefined, deviceId);
+};
 
+// Actual connection logic
+const connectToDevice = async (deviceObj?: any, deviceId?: string) => {
     try {
-        const success = await serialStore.connect({ 
-           type: 'ble', 
-           deviceId: deviceId 
-        });
+         const success = await serialStore.connect({ 
+            type: 'ble', 
+            deviceId: deviceId, // Native needs ID
+            device: deviceObj   // Web/Electron needs Object
+         });
 
-        if (success) {
-            logStore.addLog('system', t('terminal.connectSuccess') + ' (BLE)');
-            // Update preference to BLE so auto-scan doesn't annoy user
-            deviceStore.connectionTypePref = 'ble';
-            handleClose();
-        } else {
-             // Status usually handled by store/transport logs, but we can show alert
+         if (success) {
+             logStore.addLog('system', t('terminal.connectSuccess') + ' (BLE)');
+             deviceStore.connectionTypePref = 'ble';
+             handleClose();
+         } else {
              logStore.addLog('error', t('ble.connect_failed'));
-        }
+         }
     } catch (e: any) {
         logStore.addLog('error', t('terminal.connectError', {error: e.message}));
     } finally {
         isConnecting.value = false;
+        isScanning.value = false;
     }
 };
 
@@ -147,7 +218,7 @@ const handleClose = () => {
     </ion-header>
 
     <!-- Native View (Scanner) -->
-    <ion-content v-if="isNative" class="ion-padding">
+    <ion-content v-if="isNative || isElectron" class="ion-padding">
        <div class="controls ion-margin-bottom">
            <ion-button v-if="!isScanning" @click="startScan" expand="block" fill="outline">
               <ion-icon slot="start" :icon="refresh" />

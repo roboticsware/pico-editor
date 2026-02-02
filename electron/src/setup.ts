@@ -6,7 +6,7 @@ import {
 } from '@capacitor-community/electron';
 import chokidar from 'chokidar';
 import type { MenuItemConstructorOptions } from 'electron';
-import { app, BrowserWindow, Menu, MenuItem, nativeImage, Tray, session } from 'electron';
+import { app, BrowserWindow, Menu, MenuItem, nativeImage, Tray, session, ipcMain } from 'electron';
 import electronIsDev from 'electron-is-dev';
 import electronServe from 'electron-serve';
 import windowStateKeeper from 'electron-window-state';
@@ -146,33 +146,25 @@ export class ElectronCapacitorApp {
     // Configure Bluetooth Device Selection Handler
     this.MainWindow.webContents.on('select-bluetooth-device', (event, deviceList, callback) => {
       event.preventDefault();
-      logToRenderer(this.MainWindow, '[Electron BLE]: Device Selection Triggered', deviceList);
+      logToRenderer(this.MainWindow, '[Electron BLE]: Found devices', deviceList);
 
-      // Auto-select the first device that matches our filters (usually 'pico-...')
-      // Note: This simple logic picks the first found device. 
-      // For a proper picker, we would need to send this list to the renderer.
-      // But since we are using 'requestLEScan' (Scanning UI in Renderer), 
-      // this 'select-bluetooth-device' might not even be hit if the plugin handles scanning manually via the experimental API.
-      // However, if the plugin uses 'requestDevice' internally, this is needed.
+      // Send the device list to the Vue app (Renderer)
+      this.MainWindow.webContents.send('ble-device-list', deviceList);
 
-      const result = deviceList.find((device) => {
-        return device.deviceName.toLowerCase().includes('pico') ||
-          device.deviceId.toLowerCase().includes('pico');
-      });
+      // Listen for the user's selection from the Vue App
+      // We use ipcMain to listen for the response
 
-      if (result) {
-        callback(result.deviceId);
-      } else {
-        // If no auto-match, typically we'd cancel or wait. 
-        // Returning empty string cancels.
-        // callback(''); 
-        // For now, let's select the first one if available to test connectivity, or log it.
-        if (deviceList.length > 0) {
-          callback(deviceList[0].deviceId);
+      // Clean up previous listeners to prevent multiple callbacks firing
+      ipcMain.removeAllListeners('ble-device-selected');
+
+      ipcMain.once('ble-device-selected', (_event, deviceId) => {
+        logToRenderer(this.MainWindow, '[Electron BLE]: User selected', deviceId);
+        if (deviceId) {
+          callback(deviceId);
         } else {
-          callback('');
+          callback(''); // Cancel selection
         }
-      }
+      });
     });
 
     // If we close the main window with the splashscreen enabled we need to destory the ref.

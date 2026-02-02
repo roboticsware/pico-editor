@@ -1,6 +1,6 @@
 {
   "name": "pico-editor",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Pico Editor - Both Block and Text based Coding Editor in Web/PC hybrid environment for Raspberry Pi Pico with Blockly and Python support.",
   "author": {
     "name": "Roboticsware",

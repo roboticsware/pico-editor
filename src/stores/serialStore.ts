@@ -94,7 +94,7 @@ export const useSerialStore = defineStore('serial', () => {
   });
 
   // 공용 함수: 연결하기
-  async function connect(config?: { type?: ConnectionType; host?: string; port?: number; password?: string, deviceId?: string }) {
+  async function connect(config?: { type?: ConnectionType; host?: string; port?: number; password?: string, deviceId?: string, device?: any }) {
     try {
       isManualDisconnect.value = false;
       if (config?.type) {
@@ -111,7 +111,8 @@ export const useSerialStore = defineStore('serial', () => {
         host: wifiConfig.value.host,
         port: wifiConfig.value.port,
         password: wifiConfig.value.password,
-        deviceId: config?.deviceId
+        deviceId: config?.deviceId,
+        device: config?.device
       });
 
       if (success) {

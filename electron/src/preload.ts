@@ -21,3 +21,9 @@ contextBridge.exposeInMainWorld('PicoOps', {
 contextBridge.exposeInMainWorld('FileOps', {
     saveProject: (data: string, defaultName: string) => ipcRenderer.invoke('save-project-file', data, defaultName),
 });
+
+contextBridge.exposeInMainWorld('ElectronBLE', {
+    onDeviceList: (callback: (devices: any[]) => void) => ipcRenderer.on('ble-device-list', (_event, devices) => callback(devices)),
+    selectDevice: (deviceId: string) => ipcRenderer.send('ble-device-selected', deviceId),
+    removeListener: () => ipcRenderer.removeAllListeners('ble-device-list'),
+});

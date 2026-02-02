@@ -139,32 +139,46 @@ export class ElectronCapacitorApp {
       this.MainWindow.setBackgroundColor(this.CapacitorFileConfig.electron.backgroundColor);
     }
 
+    // Force open DevTools for debugging (even in prod during development phase)
+    // this.MainWindow.webContents.openDevTools();
+
     // Enable Web Bluetooth & Experimental Features
-    app.commandLine.appendSwitch('enable-experimental-web-platform-features');
-    app.commandLine.appendSwitch('enable-web-bluetooth', 'true');
+    // (Moved to index.ts to ensure they run before app.whenReady)
 
     // Configure Bluetooth Device Selection Handler
+    let bleSelectionCallback: ((deviceId: string) => void) | null = null;
+    let bleScanActive = false;
+
+    // Set up the IPC listener once
+    ipcMain.on('ble-device-selected', (_event, deviceId) => {
+      if (bleSelectionCallback) {
+        if (deviceId) {
+          bleSelectionCallback(deviceId);
+        } else {
+          bleSelectionCallback(''); // Cancel selection
+        }
+        bleSelectionCallback = null;
+        bleScanActive = false;
+      }
+    });
+
     this.MainWindow.webContents.on('select-bluetooth-device', (event, deviceList, callback) => {
       event.preventDefault();
-      logToRenderer(this.MainWindow, '[Electron BLE]: Found devices', deviceList);
 
       // Send the device list to the Vue app (Renderer)
       this.MainWindow.webContents.send('ble-device-list', deviceList);
 
-      // Listen for the user's selection from the Vue App
-      // We use ipcMain to listen for the response
+      // Store the callback so the IPC handler can call it
+      // Cancel previous callback if it exists to avoid memory leak or stale state
+      if (bleSelectionCallback) {
+        try {
+          // We can't cancel it, but we can invalidate our reference
+          // bleSelectionCallback(''); 
+        } catch { }
+      }
 
-      // Clean up previous listeners to prevent multiple callbacks firing
-      ipcMain.removeAllListeners('ble-device-selected');
-
-      ipcMain.once('ble-device-selected', (_event, deviceId) => {
-        logToRenderer(this.MainWindow, '[Electron BLE]: User selected', deviceId);
-        if (deviceId) {
-          callback(deviceId);
-        } else {
-          callback(''); // Cancel selection
-        }
-      });
+      bleSelectionCallback = callback;
+      bleScanActive = true;
     });
 
     // If we close the main window with the splashscreen enabled we need to destory the ref.
@@ -298,6 +312,7 @@ export function setupContentSecurityPolicy(customScheme: string): void {
             : `default-src ${customScheme}://* 'unsafe-inline' 'unsafe-eval' data: blob: https://fonts.googleapis.com https://fonts.gstatic.com` +
             `connect-src ${customScheme}://* ws://192.168.4.1:8266 http://192.168.4.1;`
         ],
+        'Permissions-Policy': ['bluetooth=(self)']
       },
     });
   });

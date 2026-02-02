@@ -1,13 +1,17 @@
 import type { CapacitorElectronConfig } from '@capacitor-community/electron';
 import { getCapacitorElectronConfig, setupElectronDeepLinking } from '@capacitor-community/electron';
 import type { MenuItemConstructorOptions } from 'electron';
-import { app, MenuItem, ipcMain } from 'electron';
+import { app, MenuItem, ipcMain, protocol } from 'electron';
 import electronIsDev from 'electron-is-dev';
 import unhandled from 'electron-unhandled';
 import { autoUpdater } from 'electron-updater';
 
 import { ElectronCapacitorApp, setupContentSecurityPolicy, setupReloadWatcher } from './setup';
 import { registerIpcHandlers } from './ipcHandlers';
+
+// Enable Web Bluetooth & Experimental Features (Must be applied before app.whenReady)
+app.commandLine.appendSwitch('enable-experimental-web-platform-features');
+app.commandLine.appendSwitch('enable-web-bluetooth', 'true');
 
 // Graceful handling of unhandled errors.
 unhandled();
@@ -31,6 +35,21 @@ if (capacitorFileConfig.electron?.deepLinkingEnabled) {
     customProtocol: capacitorFileConfig.electron.deepLinkingCustomProtocol ?? 'mycapacitorapp',
   });
 }
+
+// Register our custom scheme as privileged (Secure Context) so Web Bluetooth works
+const myScheme = capacitorFileConfig.electron?.customUrlScheme ?? 'capacitor-electron';
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: myScheme,
+    privileges: {
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+      allowServiceWorkers: true,
+      corsEnabled: true
+    }
+  }
+]);
 
 // If we are in Dev mode, use the file watcher components.
 if (electronIsDev) {
@@ -60,6 +79,9 @@ if (electronIsDev) {
     if (permission === 'usb' && (details as any).device?.vendorId === 11914) {
       return true;
     }
+
+    // 3. Bluetooth Permission
+    if ((permission as string) === 'bluetooth') return true;
 
     return false;
   });

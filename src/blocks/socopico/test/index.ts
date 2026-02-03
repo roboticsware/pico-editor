@@ -17,7 +17,7 @@ export const testModule = {
       TT_PICO_LED: "picozero 라이브러리를 사용하여 내장 LED를 제어합니다."
     },
     en: {
-      LED: "Soco Pico Lab Led",
+      LED: "Soco Pico Led",
       PICO_LED_TEXT: "Built-in LED",
       PICO_LED_ON: "on",
       PICO_LED_OFF: "off",

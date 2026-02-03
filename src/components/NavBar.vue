@@ -17,7 +17,7 @@ import BleDeviceModal from './BleDeviceModal.vue';
 import SetupGuideModal from './SetupGuideModal.vue';
 import { 
   play, square, download, folderOpen, save, 
-  globe, moon, sunny, flash, flashOff, wifi, hardwareChip, bluetooth
+  globe, moon, sunny, flash, flashOff, wifi, hardwareChip, bluetooth, ellipse 
 } from 'ionicons/icons';
 import { Capacitor } from '@capacitor/core';
 import { toastController } from '@ionic/vue';
@@ -46,6 +46,8 @@ const isAppMode = isElectron || isPWA || isNative;
 
 const updateProgress = ref(0);
 const isDownloading = ref(false);
+const hasUpdate = ref(false);
+const isManualCheck = ref(false);
 
 const { t } = useI18n();
 
@@ -55,21 +57,34 @@ onMounted(() => {
     setTimeout(() => {
       handleConnectionToggle();
     }, 500);
+  } else if (isElectron) {
+    // Silent update check on startup
+    if (navigator.onLine) {
+       isManualCheck.value = false;
+       // Cast to any because checkForUpdatesSilent is new
+       (window.ElectronUpdater as any).checkForUpdatesSilent?.().catch((e: any) => console.log("Silent Check Error:", e));
+    }
   }
 });
 
 if (isElectron) {
   window.ElectronUpdater.onUpdateAvailable((info) => {
-    alertCustom(t('update.title'), t('update.available') + ` (v${info.version})`, '🎉');
+    hasUpdate.value = true;
+    if (isManualCheck.value) {
+      alertCustom(t('update.title'), t('update.available') + ` (v${info.version})`, '🎉');
+    }
   });
 
   window.ElectronUpdater.onUpdateNotAvailable(() => {
-    toastController.create({
-      message: t('update.not_available'),
-      duration: 2000,
-      position: 'bottom',
-      color: 'success'
-    }).then(t => t.present());
+    hasUpdate.value = false;
+    if (isManualCheck.value) {
+      toastController.create({
+        message: t('update.not_available'),
+        duration: 2000,
+        position: 'bottom',
+        color: 'success'
+      }).then(t => t.present());
+    }
   });
 
   window.ElectronUpdater.onUpdateError((err) => {
@@ -98,6 +113,7 @@ const handleUpdateCheck = async () => {
   if (!ok) return;
   
   if (isElectron) {
+    isManualCheck.value = true;
     const toast = await toastController.create({
       message: t('update.checking'),
       duration: 1000,
@@ -436,6 +452,7 @@ async function handleUpload() {
           <span class="progress-percent">{{ updateProgress }}%</span>
         </span>
         <span v-else class="logo-text">PICO EDITOR</span>
+        <ion-icon v-if="hasUpdate && !isDownloading" :icon="ellipse" class="update-dot"></ion-icon>
       </div>
       
       <!-- Mode Icon Button -->
@@ -564,6 +581,7 @@ async function handleUpload() {
   padding-left: 10px;
   margin-right: 20px;
   transition: opacity 0.2s;
+  position: relative;
 }
 
 .clickable-logo {
@@ -720,11 +738,24 @@ ion-icon {
   .ion-hide-lg-down {
     display: none;
   }
-}
 
-@media (max-width: 768px) {
   .ion-hide-md-down {
     display: none;
   }
+}
+
+.update-dot {
+  position: absolute;
+  top: 0px;
+  right: -5px;
+  font-size: 10px;
+  color: var(--ion-color-danger);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
 }
 </style>

@@ -24,7 +24,7 @@ export async function loadModeBlocks(modeId: string | null) {
     modules.push(basicModule);
 
     switch (modeId) {
-      case 'socopicolab':
+      case 'socopico':
         const { neosocoModule } = await import(`./${modeId}/neosoco/index.ts`);
         modules.push(neosocoModule);
         break

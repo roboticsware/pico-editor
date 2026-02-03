@@ -125,7 +125,21 @@ ipcMain.handle('check-for-updates', async () => {
     return { status: 'dev-mode', message: 'Update check is disabled in development mode.' };
   }
   try {
+    autoUpdater.autoDownload = true;
     const result = await autoUpdater.checkForUpdatesAndNotify();
+    return { status: 'success', result };
+  } catch (error) {
+    return { status: 'error', message: error.message };
+  }
+});
+
+ipcMain.handle('check-for-updates-silent', async () => {
+  if (electronIsDev) {
+    return { status: 'dev-mode', message: 'Update check is disabled in development mode.' };
+  }
+  try {
+    autoUpdater.autoDownload = false;
+    const result = await autoUpdater.checkForUpdates();
     return { status: 'success', result };
   } catch (error) {
     return { status: 'error', message: error.message };

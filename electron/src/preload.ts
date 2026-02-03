@@ -6,6 +6,7 @@ console.log('User Preload!');
 
 contextBridge.exposeInMainWorld('ElectronUpdater', {
     checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    checkForUpdatesSilent: () => ipcRenderer.invoke('check-for-updates-silent'),
     onUpdateAvailable: (callback) => ipcRenderer.on('update-available', (_event, info) => callback(info)),
     onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', (_event, info) => callback(info)),
     onUpdateError: (callback) => ipcRenderer.on('update-error', (_event, err) => callback(err)),

@@ -6,17 +6,17 @@ export default function define(Blocks: any) {
 
   // --- 1. 기초 및 라이브러리 임포트 블록 ---
   const simpleBlocks = [
-    { id: 'import_time', text: 'import time', tooltip: 'Imports the time library.' },
-    { id: 'import_math', text: 'import math', tooltip: 'Imports the math library.' },
-    { id: 'random', text: 'import random', tooltip: 'Imports the random library.' },
-    { id: 'pass', text: 'pass', tooltip: 'Pass to the next command' },
-    { id: 'break', text: 'break', tooltip: 'breaks out of a loop' }
+    { id: 'import_time', msgKey: 'IMPORT_TIME', default: 'import time', tooltip: 'Imports the time library.' },
+    { id: 'import_math', msgKey: 'IMPORT_MATH', default: 'import math', tooltip: 'Imports the math library.' },
+    { id: 'random', msgKey: 'IMPORT_RANDOM', default: 'import random', tooltip: 'Imports the random library.' },
+    { id: 'pass', msgKey: 'PASS', default: 'pass', tooltip: 'Pass to the next command' },
+    { id: 'break', msgKey: 'BREAK', default: 'break', tooltip: 'breaks out of a loop' }
   ];
 
   simpleBlocks.forEach(b => {
     Blocks[b.id] = {
       init: function () {
-        this.appendDummyInput().appendField(b.text);
+        this.appendDummyInput().appendField(Blockly.Msg[b.msgKey] || b.default);
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setStyle('basic_blocks');
@@ -28,7 +28,7 @@ export default function define(Blocks: any) {
   // --- 1-1. 특별 시작 블록 ---
   Blocks['start_comment'] = {
     init: function () {
-      this.appendDummyInput().appendField("# Start code here");
+      this.appendDummyInput().appendField(Blockly.Msg['START_COMMENT'] || "# Start code here");
       this.setNextStatement(true, null);
       this.setStyle('variable_blocks');
       this.setTooltip('Starting comment.');
@@ -39,7 +39,7 @@ export default function define(Blocks: any) {
   Blocks['while_true'] = {
     init: function () {
       this.appendDummyInput()
-        .appendField('while True:');
+        .appendField(Blockly.Msg['WHILE_TRUE'] || 'while True:');
       this.appendStatementInput('DO')
         .appendField('');
       this.setPreviousStatement(true, null);
@@ -52,9 +52,12 @@ export default function define(Blocks: any) {
 
   Blocks['whileout'] = {
     init: function () {
-      this.appendDummyInput().appendField('while');
+      // "while %1 :"
+      const msg = Blockly.Msg['WHILE'] || 'while %1 :';
+      const parts = msg.split(/%1/);
+      this.appendDummyInput().appendField(parts[0]);
       this.appendValueInput("cond").setCheck("Boolean");
-      this.appendDummyInput().appendField(':');
+      this.appendDummyInput().appendField(parts[1]);
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
@@ -64,9 +67,12 @@ export default function define(Blocks: any) {
 
   Blocks['ifinline'] = {
     init: function () {
-      this.appendDummyInput().appendField('if');
+      // "if %1 :"
+      const msg = Blockly.Msg['IF'] || 'if %1 :';
+      const parts = msg.split(/%1/);
+      this.appendDummyInput().appendField(parts[0]);
       this.appendValueInput("iftext").setCheck("Boolean");
-      this.appendDummyInput().appendField(':');
+      this.appendDummyInput().appendField(parts[1]);
       this.appendStatementInput('ifstate');
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
@@ -77,9 +83,12 @@ export default function define(Blocks: any) {
 
   Blocks['elifinline'] = {
     init: function () {
-      this.appendDummyInput().appendField('elif');
+      // "elif %1 :"
+      const msg = Blockly.Msg['ELIF'] || 'elif %1 :';
+      const parts = msg.split(/%1/);
+      this.appendDummyInput().appendField(parts[0]);
       this.appendValueInput('iftext').setCheck(null);
-      this.appendDummyInput().appendField(':');
+      this.appendDummyInput().appendField(parts[1]);
       this.appendStatementInput('ifstate');
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
@@ -90,7 +99,7 @@ export default function define(Blocks: any) {
 
   Blocks['else'] = {
     init: function () {
-      this.appendDummyInput().appendField('else:');
+      this.appendDummyInput().appendField(Blockly.Msg['ELSE'] || 'else:');
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
@@ -101,7 +110,7 @@ export default function define(Blocks: any) {
   Blocks['try'] = {
     init: function () {
       this.appendDummyInput()
-        .appendField('try:');
+        .appendField(Blockly.Msg['TRY'] || 'try:');
       this.appendStatementInput('DO')
         .appendField('');
       this.setPreviousStatement(true, null);
@@ -114,12 +123,15 @@ export default function define(Blocks: any) {
 
   Blocks['except'] = {
     init: function () {
+      // "except %1 :"
+      const msg = Blockly.Msg['EXCEPT'] || 'except %1 :';
+      const parts = msg.split(/%1/);
       this.appendDummyInput()
-        .appendField('except');
+        .appendField(parts[0]);
       this.appendValueInput("iftext")
         .setCheck("Boolean");
       this.appendDummyInput()
-        .appendField(':');
+        .appendField(parts[1]);
       this.appendStatementInput('ifstate')
         .setCheck(null);
       this.setInputsInline(true);
@@ -133,11 +145,25 @@ export default function define(Blocks: any) {
 
   Blocks['for'] = {
     init: function () {
-      this.appendDummyInput().appendField('for');
+      // "for %1 in range(%2):"
+      const msg = Blockly.Msg['FOR_RANGE'] || 'for %1 in range(%2):';
+      // Approximate splitting for this specific pattern
+      // We expect format: [pre] %1 [mid] %2 [post]
+      // Simple Split might not work well if %1 and %2 order is swapped, 
+      // but for now let's assume standard order or just split by %1 first
+
+      const parts1 = msg.split(/%1/);
+      const pre = parts1[0];
+      const rest = parts1[1];
+      const parts2 = rest.split(/%2/);
+      const mid = parts2[0];
+      const post = parts2[1];
+
+      this.appendDummyInput().appendField(pre);
       this.appendValueInput('letter').setCheck(null);
-      this.appendDummyInput().appendField('in range(');
+      this.appendDummyInput().appendField(mid);
       this.appendValueInput('no').setCheck(null);
-      this.appendDummyInput().appendField('):');
+      this.appendDummyInput().appendField(post);
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
@@ -147,16 +173,25 @@ export default function define(Blocks: any) {
 
   Blocks['advancedforloops'] = {
     init: function () {
+      // "for %1 in %2 :"
+      const msg = Blockly.Msg['FOR_ADV'] || 'for %1 in %2 :';
+      const parts1 = msg.split(/%1/);
+      const pre = parts1[0];
+      const rest = parts1[1];
+      const parts2 = rest.split(/%2/);
+      const mid = parts2[0];
+      const post = parts2[1];
+
       this.appendDummyInput()
-        .appendField('for');
+        .appendField(pre);
       this.appendValueInput('x')
         .setCheck(null);
       this.appendDummyInput()
-        .appendField('in');
+        .appendField(mid);
       this.appendValueInput('y')
         .setCheck(null);
       this.appendDummyInput()
-        .appendField(":");
+        .appendField(post);
       this.appendStatementInput('DO')
         .setCheck(null);
       this.setPreviousStatement(true, null);
@@ -170,11 +205,20 @@ export default function define(Blocks: any) {
   // --- 3. 함수 및 클래스 ---
   Blocks['define'] = {
     init: function () {
-      this.appendDummyInput().appendField('def ');
+      // "def %1 (%2):"
+      const msg = Blockly.Msg['DEF_FUNC'] || 'def %1 (%2):';
+      const parts1 = msg.split(/%1/);
+      const pre = parts1[0];
+      const rest = parts1[1];
+      const parts2 = rest.split(/%2/);
+      const mid = parts2[0];
+      const post = parts2[1];
+
+      this.appendDummyInput().appendField(pre);
       this.appendValueInput('1').setCheck(null); // 함수명
-      this.appendDummyInput().appendField('(');
+      this.appendDummyInput().appendField(mid);
       this.appendValueInput('2').setCheck(null); // 매개변수
-      this.appendDummyInput().appendField('):');
+      this.appendDummyInput().appendField(post);
       this.appendStatementInput('DO');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
@@ -184,8 +228,12 @@ export default function define(Blocks: any) {
 
   Blocks['return2'] = {
     init: function () {
-      this.appendDummyInput().appendField('return');
+      // "return %1"
+      const msg = Blockly.Msg['RETURN'] || 'return %1';
+      const parts = msg.split(/%1/);
+      this.appendDummyInput().appendField(parts[0]);
       this.appendValueInput('return').setCheck(null);
+      this.appendDummyInput().appendField(parts[1]);
       this.setInputsInline(true);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
@@ -195,12 +243,15 @@ export default function define(Blocks: any) {
 
   Blocks['class'] = {
     init: function () {
+      // "class %1 :"
+      const msg = Blockly.Msg['CLASS'] || 'class %1 :';
+      const parts = msg.split(/%1/);
       this.appendDummyInput()
-        .appendField('class')
+        .appendField(parts[0]);
       this.appendValueInput("class")
         .setCheck(null)
       this.appendDummyInput()
-        .appendField(':');
+        .appendField(parts[1]);
       this.appendStatementInput('DO')
         .appendField('');
       this.setPreviousStatement(true, null);
@@ -391,9 +442,12 @@ export default function define(Blocks: any) {
   // --- 6. 기타 필수 블록 ---
   Blocks['varprint'] = {
     init: function () {
-      this.appendDummyInput().appendField('print(');
+      // "print(%1)"
+      const msg = Blockly.Msg['PRINT'] || 'print(%1)';
+      const parts = msg.split(/%1/);
+      this.appendDummyInput().appendField(parts[0]);
       this.appendValueInput('var').setCheck(null);
-      this.appendDummyInput().appendField(')');
+      this.appendDummyInput().appendField(parts[1]);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setStyle('basic_blocks');
@@ -402,12 +456,15 @@ export default function define(Blocks: any) {
 
   Blocks['printnew'] = {
     init: function () {
+      // "print("%1")"
+      const msg = Blockly.Msg['PRINT_TEXT'] || 'print("%1")';
+      const parts = msg.split(/%1/);
       this.appendDummyInput()
-        .appendField('print("')
+        .appendField(parts[0])
       this.appendValueInput("text")
         .setCheck(null);
       this.appendDummyInput()
-        .appendField('" )');
+        .appendField(parts[1]);
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setStyle('basic_blocks');

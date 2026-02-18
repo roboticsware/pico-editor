@@ -160,6 +160,22 @@ const handleModeChangeRequest = async () => {
   }
 };
 
+const handleDifficultyToggle = async () => {
+  const newDiff = modeStore.difficulty === 'beginner' ? 'intermediate' : 'beginner';
+  
+  // Just set the store. BlocklyCanvas will watch and update.
+  modeStore.setDifficulty(newDiff);
+  
+  // Optional: Toast to confirm
+  const toast = await toastController.create({
+    message: t('common.coding_mode') + ": " + (newDiff === 'beginner' ? t('navbar.beginner') : t('navbar.intermediate')),
+    duration: 1500,
+    position: 'top',
+    color: 'dark'
+  });
+  await toast.present();
+};
+
 const handleLangClick = async () => {
   const actionSheet = await actionSheetController.create({
     header: '💡 ' + t('navbar.lang'),
@@ -470,6 +486,12 @@ async function handleUpload() {
 
       <ion-button fill="clear" @click="themeStore.toggleTheme" class="nav-icon-btn">
         <ion-icon slot="icon-only" :icon="themeStore.isDarkMode ? sunny : moon"></ion-icon>
+      </ion-button>
+
+      <!-- Difficulty Toggle -->
+      <ion-button fill="clear" @click="handleDifficultyToggle" class="nav-ghost-btn">
+        <span class="ion-hide-sm-down" style="font-size: 1.2rem; margin-right: 4px;">{{ modeStore.difficulty === 'beginner' ? '🐣' : '🐍' }}</span>
+        <span class="ion-hide-sm-down">{{ modeStore.difficulty === 'beginner' ? $t('navbar.beginner') : $t('navbar.intermediate') }}</span>
       </ion-button>
     </ion-buttons>
 

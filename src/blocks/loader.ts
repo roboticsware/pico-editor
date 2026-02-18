@@ -10,11 +10,17 @@ interface BlockModule {
   i18n?: { [lang: string]: { [key: string]: string } };
 }
 
+import { useModeStore } from '../stores/modeStore';
+
 export async function loadModeBlocks(modeId: string | null) {
   if (!modeId) return null;
 
   const langStore = useLangStore();
+  const modeStore = useModeStore();
   const currentLang = langStore.currentLang;
+  // Fallback to beginner if not set (though store handles default)
+  const currentDifficulty = modeStore.difficulty || 'beginner';
+
 
   try {
     let modules: BlockModule[] = [];
@@ -50,7 +56,14 @@ export async function loadModeBlocks(modeId: string | null) {
     modules.forEach(mod => {
       // 1. i18n 언어팩 등록 (가장 먼저 수행)
       if (mod.i18n && mod.i18n[currentLang]) {
+        // Base keys
         Object.assign(Blockly.Msg, mod.i18n[currentLang]);
+
+        // Difficulty specific keys (beginner/intermediate)
+        // Check if the module has difficulty specific keys under the language
+        if ((mod.i18n[currentLang] as any)[currentDifficulty]) {
+          Object.assign(Blockly.Msg, (mod.i18n[currentLang] as any)[currentDifficulty]);
+        }
       }
       // 2. 블록 정의 및 코드 생성기 등록
       if (mod.definitions) mod.definitions(Blockly.Blocks);

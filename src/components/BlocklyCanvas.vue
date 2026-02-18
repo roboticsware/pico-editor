@@ -19,6 +19,7 @@ const themeStore = useThemeStore();
 const { t, tm} = useI18n();
 
 const codeStore = useCodeStore();
+const modeStore = useModeStore();
 const emit = defineEmits(['show-save-warnning'])
 const blocklyDiv = ref<HTMLElement | null>(null);
 let workspace: Blockly.WorkspaceSvg;
@@ -63,9 +64,31 @@ watch(() => langStore.currentLang, async(newLang) => {
     workspace.updateToolbox(await getToolboxConfig());
     // 이미 화면에 놓인 블록들의 텍스트 갱신 (직렬화 방식으로 리로드가 가장 확실함)
     const state = Blockly.serialization.workspaces.save(workspace);
+    workspace.clear(); // Clear explicitly to force re-render
     Blockly.serialization.workspaces.load(state, workspace);
   }
 }, { immediate: true });
+
+// 난이도 변경 감시
+watch(() => modeStore.difficulty, async() => {
+  if (workspace) {
+    // 1. Re-load message keys (This updates Blockly.Msg)
+    // We assume applying locale again or just re-loading blocks works.
+    // Actually applyLocaleToBlockly only handles language packs.
+    // We need to re-run "loadModeBlocks" part which injects messages.
+    
+    // Force re-fetch toolbox which internally re-runs loadModeBlocks logic for messages
+    // BUT loadModeBlocks is designed to load modules.
+    // Let's explicitly call getToolboxConfig which calls loadModeBlocks
+    const newToolbox = await getToolboxConfig();
+    workspace.updateToolbox(newToolbox);
+
+    // 2. Reload Workspace to apply new Msg to Blocks
+    const state = Blockly.serialization.workspaces.save(workspace);
+    workspace.clear();
+    Blockly.serialization.workspaces.load(state, workspace);
+  }
+});
 
 const getToolboxConfig = async () => {
   // 1. 고도화된 로더를 통해 현재 모드와 언어에 맞는 툴박스를 가져옵니다.
@@ -76,7 +99,7 @@ const getToolboxConfig = async () => {
 };
 
 // Blockly 초기화 부분
-const modeStore = useModeStore();
+// Blockly 초기화 부분
 // 테마 설정 객체 정의
 const themeConfig = {
   'name': 'scratch_theme',

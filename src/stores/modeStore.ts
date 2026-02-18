@@ -23,5 +23,14 @@ export const useModeStore = defineStore('mode', () => {
     }
   };
 
-  return { currentMode, currentModeDetail, allModes: AVAILABLE_MODES, setMode };
+  // 난이도 설정 (beginner | intermediate)
+  const savedDifficulty = localStorage.getItem('difficulty_mode') as 'beginner' | 'intermediate';
+  const difficulty = ref<'beginner' | 'intermediate'>(savedDifficulty || 'beginner');
+
+  const setDifficulty = (diff: 'beginner' | 'intermediate') => {
+    difficulty.value = diff;
+    localStorage.setItem('difficulty_mode', diff);
+  };
+
+  return { currentMode, currentModeDetail, allModes: AVAILABLE_MODES, setMode, difficulty, setDifficulty };
 });

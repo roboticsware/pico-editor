@@ -7,7 +7,8 @@
     "select": "선택",
     "dontShowAgain": "다음에 다시 보지 않음",
     "close": "닫기",
-    "progress": "진행 중..."
+    "progress": "진행 중...",
+    "coding_mode": "코딩 모드"
   },
   "navbar": {
     "lang": "언어 선택",
@@ -21,7 +22,9 @@
     "uploading": "업로드 중...",
     "searching_pico": "피코 검색 중...",
     "lib_manager": "라이브러리 관리자",
-    "library_update": "라이브러리 업데이트 중: {name} ({oldVer} -> {newVer})..."
+    "library_update": "라이브러리 업데이트 중: {name} ({oldVer} -> {newVer})...",
+    "beginner": "초급 모드",
+    "intermediate": "중급 모드"
   },
   "editor": {
     "default_comment": "# 여기에 코드를 작성하세요",

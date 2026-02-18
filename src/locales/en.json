@@ -7,7 +7,8 @@
     "select": "Select",
     "dontShowAgain": "Don't show again",
     "close": "Close",
-    "progress": "In progress..."
+    "progress": "In progress...",
+    "coding_mode": "Coding Mode"
   },
   "navbar": {
     "lang": "Select Language",
@@ -21,7 +22,9 @@
     "uploading": "Uploading...",
     "searching_pico": "Searching for Pico...",
     "lib_manager": "Library Manager",
-    "library_update": "Updating library: {name} ({oldVer} -> {newVer})..."
+    "library_update": "Updating library: {name} ({oldVer} -> {newVer})...",
+    "beginner": "Beginner Mode",
+    "intermediate": "Intermediate Mode"
   },
   "editor": {
     "default_comment": "# Start code here",

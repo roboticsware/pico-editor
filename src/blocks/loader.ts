@@ -7,7 +7,7 @@ interface BlockModule {
   definitions: (Blocks: any) => void;
   generators: (P: any) => void;
   toolbox: any; // 카테고리 정보 또는 블록 목록
-  i18n?: { [lang: string]: { [key: string]: string } };
+  i18n?: { [lang: string]: any }; // Allow any structure for now to support nested difficulty keys
 }
 
 import { useModeStore } from '../stores/modeStore';
@@ -56,13 +56,29 @@ export async function loadModeBlocks(modeId: string | null) {
     modules.forEach(mod => {
       // 1. i18n 언어팩 등록 (가장 먼저 수행)
       if (mod.i18n && mod.i18n[currentLang]) {
-        // Base keys
-        Object.assign(Blockly.Msg, mod.i18n[currentLang]);
+        // Base keys - we filter out objects (difficulty levels) to avoid pollution if necessary, 
+        // or just Object.assign everything.
+        // However, Blockly.Msg expects string values. 
+        // So we should only assign string values from the root of lang object.
 
-        // Difficulty specific keys (beginner/intermediate)
+        const langPack = mod.i18n[currentLang];
+
+        // 1. Assign base string keys
+        Object.keys(langPack).forEach(key => {
+          if (typeof langPack[key] === 'string') {
+            Blockly.Msg[key] = langPack[key];
+          }
+        });
+
+        // 2. Difficulty specific keys (beginner/intermediate)
         // Check if the module has difficulty specific keys under the language
-        if ((mod.i18n[currentLang] as any)[currentDifficulty]) {
-          Object.assign(Blockly.Msg, (mod.i18n[currentLang] as any)[currentDifficulty]);
+        if (langPack[currentDifficulty]) {
+          const diffPack = langPack[currentDifficulty];
+          Object.keys(diffPack).forEach(key => {
+            if (typeof diffPack[key] === 'string') {
+              Blockly.Msg[key] = diffPack[key];
+            }
+          });
         }
       }
       // 2. 블록 정의 및 코드 생성기 등록

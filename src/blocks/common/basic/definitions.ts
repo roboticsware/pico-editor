@@ -154,10 +154,10 @@ export default function define(Blocks: any) {
 
       const parts1 = msg.split(/%1/);
       const pre = parts1[0];
-      const rest = parts1[1];
+      const rest = parts1[1] || '';
       const parts2 = rest.split(/%2/);
       const mid = parts2[0];
-      const post = parts2[1];
+      const post = parts2[1] || '';
 
       this.appendDummyInput().appendField(pre);
       this.appendValueInput('letter').setCheck(null);
@@ -177,10 +177,10 @@ export default function define(Blocks: any) {
       const msg = Blockly.Msg['FOR_ADV'] || 'for %1 in %2 :';
       const parts1 = msg.split(/%1/);
       const pre = parts1[0];
-      const rest = parts1[1];
+      const rest = parts1[1] || '';
       const parts2 = rest.split(/%2/);
       const mid = parts2[0];
-      const post = parts2[1];
+      const post = parts2[1] || '';
 
       this.appendDummyInput()
         .appendField(pre);
@@ -209,10 +209,10 @@ export default function define(Blocks: any) {
       const msg = Blockly.Msg['DEF_FUNC'] || 'def %1 (%2):';
       const parts1 = msg.split(/%1/);
       const pre = parts1[0];
-      const rest = parts1[1];
+      const rest = parts1[1] || '';
       const parts2 = rest.split(/%2/);
       const mid = parts2[0];
-      const post = parts2[1];
+      const post = parts2[1] || '';
 
       this.appendDummyInput().appendField(pre);
       this.appendValueInput('1').setCheck(null); // 함수명
@@ -445,9 +445,10 @@ export default function define(Blocks: any) {
       // "print(%1)"
       const msg = Blockly.Msg['PRINT'] || 'print(%1)';
       const parts = msg.split(/%1/);
-      this.appendDummyInput().appendField(parts[0]);
+
+      this.appendDummyInput().appendField(parts[0] || '');
       this.appendValueInput('var').setCheck(null);
-      this.appendDummyInput().appendField(parts[1]);
+      this.appendDummyInput().appendField(parts[1] || '');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setStyle('basic_blocks');
@@ -464,7 +465,7 @@ export default function define(Blocks: any) {
       this.appendValueInput("text")
         .setCheck(null);
       this.appendDummyInput()
-        .appendField(parts[1]);
+        .appendField(parts[1] || '');
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setStyle('basic_blocks');

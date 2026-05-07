@@ -72,13 +72,62 @@ export class SerialTransport implements Transport {
     private async startReading() {
         if (!this.reader) return;
         const decoder = new TextDecoder();
+        let buffer = new Uint8Array(0);
+        let inJpeg = false;
         try {
             while (true) {
                 const { value, done } = await this.reader.read();
                 if (done) break;
                 if (value) {
-                    const text = decoder.decode(value);
-                    if (this.dataCallback) this.dataCallback(text);
+                    // Append value to buffer
+                    const newBuffer = new Uint8Array(buffer.length + value.length);
+                    newBuffer.set(buffer);
+                    newBuffer.set(value, buffer.length);
+                    buffer = newBuffer;
+
+                    // Parse buffer for JPEG (SOI: FF D8, EOI: FF D9)
+                    let i = 0;
+                    while (i < buffer.length - 1) {
+                        if (!inJpeg) {
+                            if (buffer[i] === 0xFF && buffer[i+1] === 0xD8) {
+                                // Decode the preceding text
+                                if (i > 0) {
+                                    const textBytes = buffer.slice(0, i);
+                                    if (this.dataCallback) this.dataCallback(decoder.decode(textBytes));
+                                }
+                                buffer = buffer.slice(i); // keep FFD8 at start
+                                inJpeg = true;
+                                i = 0;
+                            } else {
+                                i++;
+                            }
+                        } else {
+                            if (buffer[i] === 0xFF && buffer[i+1] === 0xD9) {
+                                const jpegBytes = buffer.slice(0, i + 2);
+                                this.emitFrame(jpegBytes);
+
+                                buffer = buffer.slice(i + 2);
+                                inJpeg = false;
+                                i = 0;
+                            } else {
+                                i++;
+                            }
+                        }
+                    }
+
+                    // If not in JPEG, decode remaining text, keeping the last byte if it's 0xFF (potential start of FFD8)
+                    if (!inJpeg && buffer.length > 0) {
+                        if (buffer[buffer.length - 1] === 0xFF) {
+                            if (buffer.length > 1) {
+                                const textBytes = buffer.slice(0, buffer.length - 1);
+                                if (this.dataCallback) this.dataCallback(decoder.decode(textBytes));
+                                buffer = buffer.slice(buffer.length - 1);
+                            }
+                        } else {
+                            if (this.dataCallback) this.dataCallback(decoder.decode(buffer));
+                            buffer = new Uint8Array(0);
+                        }
+                    }
                 }
             }
         } catch (error) {
@@ -90,6 +139,16 @@ export class SerialTransport implements Transport {
             }
             this.isConnected = false;
         }
+    }
+
+    private emitFrame(jpegBytes: Uint8Array) {
+        let binary = '';
+        for (let i = 0; i < jpegBytes.length; i++) {
+            binary += String.fromCharCode(jpegBytes[i]);
+        }
+        const base64Str = window.btoa(binary);
+        const event = new CustomEvent('serial-video-frame', { detail: base64Str });
+        window.dispatchEvent(event);
     }
 
     async disconnect(): Promise<void> {

@@ -1,12 +1,12 @@
 // Import images
-import socopicoIcon from '@/assets/modes/socopico-icon.png';
-import socopicoImg from '@/assets/modes/socopico.png';
-import raufIcon from '@/assets/modes/rauf-icon.png';
-import raufImg from '@/assets/modes/rauf.png';
+import socopicolabIcon from '@/assets/modes/socopicolab-icon.png';
+import socopicolabImg from '@/assets/modes/socopicolab.png';
+import esp32s3Icon from '@/assets/modes/esp32s3-icon.png';
+import esp32s3Img from '@/assets/modes/esp32s3.png';
 import rpipicoIcon from '@/assets/modes/rpipico-icon.png';
 import rpipicoImg from '@/assets/modes/rpipico.png';
 
-export type CodingMode = 'socopico' | 'rauf' | 'rpipico';
+export type CodingMode = 'socopicolab' | 'esp32s3' | 'rpipico';
 
 export interface ModeDetail {
   id: CodingMode;
@@ -25,11 +25,11 @@ export const AVAILABLE_MODES: ModeDetail[] = [
     description: 'Roboticsware SoCo Pico board'
   },
   {
-    id: 'rauf',
-    name: 'Rauf',
-    icon: raufIcon,
-    image: raufImg,
-    description: 'Roboticsware Rauf board'
+    id: 'esp32s3',
+    name: 'ESP32-S3',
+    icon: esp32s3Icon,
+    image: esp32s3Img,
+    description: 'ESP32-S3 N16R8 Camera mode'
   },
   {
     id: 'rpipico',

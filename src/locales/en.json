@@ -96,10 +96,12 @@
     "title": "Get Started with Pico",
     "step1_title": "Step 1: Preparation",
     "step1_desc": "Connect USB cable while holding the <strong>BOOTSEL button</strong>.<br/><br/><strong>However, if this is your first time connecting since purchase, you can skip this step.</strong>",
+    "esp_step1_desc": "Plug in your ESP32 device via USB. <br/><br/><strong>Note:</strong> Some boards may require holding the <strong>BOOT</strong> button while connecting or when it says 'Connecting...'.",
     "step2_title": "Step 2: Drive Check",
     "step2_desc": "Please select and connect the <strong>RPI-RP2 Boot</strong> drive.",
     "step3_title": "Step 3: Select Model & Install",
     "step3_desc": "⚠️ Note: Cleaning (Nuke) is performed before firmware installation. <strong>All data will be erased.</strong><br/>Select your Pico model.",
+    "esp_step3_desc": "⚠️ Note: Flash memory will be erased before firmware installation. <strong>All data will be erased.</strong><br/>Select your ESP32 model.",
     "select_model": "Select Model",
     "models": {
       "pico": "Pico",

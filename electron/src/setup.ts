@@ -251,15 +251,22 @@ export class ElectronCapacitorApp {
       logToRenderer(this.MainWindow, '[Electron Serial]: Available ports:', portList);
       event.preventDefault();
 
-      const PICO_VID = 11914; // 0x2E8A
+      const ALLOWED_VIDS = [
+        11914, // 0x2E8A (Raspberry Pi Pico)
+        4292,  // 0x10C4 (Silicon Labs CP210x)
+        6790,  // 0x1A86 (QinHeng CH340)
+        1027,  // 0x0403 (FTDI)
+        12346  // 0x303A (Espressif USB)
+      ];
 
-      // 이미 연결된 Pico가 있는지 확인
-      const picoPort = portList.find(p => p.vendorId && Number(p.vendorId) === PICO_VID);
-      if (picoPort) {
-        logToRenderer(this.MainWindow, '[Electron Serial]: Pico found immediately, selecting:', picoPort.displayName);
-        callback(picoPort.portId);
+      // Check for any matching device
+      const targetPort = portList.find(p => p.vendorId && ALLOWED_VIDS.includes(Number(p.vendorId)));
+      
+      if (targetPort) {
+        logToRenderer(this.MainWindow, '[Electron Serial]: Device auto-selected:', targetPort.displayName);
+        callback(targetPort.portId);
       } else {
-        logToRenderer(this.MainWindow, '[Electron Serial]: Pico not found immediately.');
+        logToRenderer(this.MainWindow, '[Electron Serial]: No supported device found immediately.');
         callback('');
       }
     });

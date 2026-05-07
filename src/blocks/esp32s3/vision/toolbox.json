@@ -1,0 +1,49 @@
+{
+  "kind": "category",
+  "name": "VISION",
+  "colour": "230",
+  "contents": [
+    {
+      "kind": "label",
+      "text": "PC Vision (Editor AI)"
+    },
+    {
+      "kind": "block",
+      "type": "vision_start_pc_stream"
+    },
+    {
+      "kind": "block",
+      "type": "vision_get_pc_hand_x"
+    },
+    {
+      "kind": "block",
+      "type": "vision_get_pc_hand_y"
+    },
+    {
+      "kind": "label",
+      "text": "Device Vision (TFLite)"
+    },
+    {
+      "kind": "block",
+      "type": "vision_load_tflite",
+      "inputs": {
+        "MODEL_NAME": {
+          "shadow": {
+            "type": "text",
+            "fields": {
+              "TEXT": "model.tflite"
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "block",
+      "type": "vision_run_inference"
+    },
+    {
+      "kind": "block",
+      "type": "vision_get_inference_result"
+    }
+  ]
+}

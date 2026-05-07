@@ -2,16 +2,33 @@
 import { Splitpanes, Pane } from 'splitpanes'
 import PythonCodeViewer from './PythonCodeViewer.vue'
 import TerminalLog from './TerminalLog.vue'
-import { ref } from 'vue';
+import CameraViewer from './CameraViewer.vue'
+import { ref, onMounted, onUnmounted } from 'vue';
 
 const pythonViewerRef = ref<InstanceType<typeof PythonCodeViewer> | null>(null);
-// 부모(BlocklyEditor)가 접근할 수 있도록 다시 노출
-defineExpose({ pythonViewerRef });
+const cameraViewerRef = ref<InstanceType<typeof CameraViewer> | null>(null);
+const isCameraVisible = ref(false);
+
+// Expose so parent or other stores can open it and send frames
+defineExpose({ 
+  pythonViewerRef, 
+  cameraViewerRef,
+  toggleCamera: (val: boolean) => {
+    isCameraVisible.value = val;
+    if (cameraViewerRef.value) {
+      cameraViewerRef.value.setActive(val);
+    }
+  }
+});
 </script>
 
 <template>
   <splitpanes horizontal class="default-theme">
-    <pane min-size="20" size="70">
+    <pane min-size="10" size="30" v-if="isCameraVisible">
+      <CameraViewer ref="cameraViewerRef" />
+    </pane>
+
+    <pane min-size="20" :size="isCameraVisible ? 40 : 70">
       <PythonCodeViewer ref="pythonViewerRef" />
     </pane>
 

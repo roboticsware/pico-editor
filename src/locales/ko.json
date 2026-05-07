@@ -96,10 +96,12 @@
     "title": "새로운 Pico 시작하기",
     "step1_title": "1단계: 연결 준비",
     "step1_desc": "<strong>BOOTSEL 버튼</strong>을 누른 상태에서 USB 케이블을 컴퓨터에 연결하세요.<br/><br/><strong>그러나, 구입 후 첫 연결이면 본 과정은 건너뛰어도 됩니다.</strong>",
+    "esp_step1_desc": "USB 케이블로 ESP32 장치를 연결하세요. <br/><br/><strong>참고:</strong> 일부 보드는 연결할 때나 'Connecting...' 메시지가 뜰 때 <strong>BOOT</strong> 버튼을 누르고 있어야 할 수도 있습니다.",
     "step2_title": "2단계: 드라이브 인식",
     "step2_desc": "<strong>RPI-RP2 Boot</strong> 드라이브를 선택해 연결해주세요.",
     "step3_title": "3단계: 모델 선택 및 설치",
     "step3_desc": "⚠️ 주의: 초기화(Nuke) 후 펌웨어를 설치하므로 <strong>모든 데이터가 삭제됩니다.</strong><br/>사용 중인 Pico 모델을 선택하세요.",
+    "esp_step3_desc": "⚠️ 주의: 펌웨어 설치 전 메모리를 초기화하므로 <strong>모든 데이터가 삭제됩니다.</strong><br/>사용 중인 ESP32 모델을 선택하세요.",
     "select_model": "모델 선택",
     "models": {
       "pico": "Pico",

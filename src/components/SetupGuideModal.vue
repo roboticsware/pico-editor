@@ -21,8 +21,10 @@ import pico2WImg from '@/assets/rp2-pico2-w.thumb.jpg';
 import { useDeviceStore } from '@/stores/deviceStore';
 import { alertCustom } from '@/services/modal-confirm';
 import { flashFirmware, injectLibraries } from '@/utils/firmware-flash';
+import { flashEspFirmware } from '@/utils/esp-firmware-flash';
 import { Capacitor } from '@capacitor/core';
 import { serial } from '@/utils/serial';
+import espImg from '@/assets/esp32.thumb.png';
 
 const props = withDefaults(defineProps<{ 
   isOpen: boolean,
@@ -40,19 +42,21 @@ const selectedModel = ref<string>('');
 const isFlashing = ref(false);
 const progress = ref(0);
 const statusMessage = ref('');
-const currentModelInfo = ref<{ id: string; isWireless: boolean } | null>(null);
+const currentModelInfo = ref<{ id: string; isWireless: boolean; family?: 'pico' | 'esp32' } | null>(null);
 const picoIdSuffix = ref<string>('xxxx');
 const connectionMethod = ref<'wifi' | 'ble'>('wifi');
+const deviceFamily = ref<'pico' | 'esp32' | null>(null);
 
 // State for Web Nuke Re-selection
 const waitingForReSelect = ref(false);
 let reSelectResolve: ((handle: any) => void) | null = null;
 
 const models = computed(() => [
-  { id: 'pico', name: 'Pico', img: picoImg, firm: 'RPI_PICO-20251209-v1.27.0.uf2' },
-  { id: 'pico_w', name: 'Pico W', img: picoWImg, firm: 'RPI_PICO_W-20251209-v1.27.0.uf2' },
-  { id: 'pico2', name: 'Pico 2', img: pico2Img, firm: 'RPI_PICO2-20251209-v1.27.0.uf2' },
-  { id: 'pico2_w', name: 'Pico 2 W', img: pico2WImg, firm: 'RPI_PICO2_W-20251209-v1.27.0.uf2' },  
+  { id: 'pico', name: 'Pico', family: 'pico', img: picoImg, firm: 'RPI_PICO-20251209-v1.27.0.uf2' },
+  { id: 'pico_w', name: 'Pico W', family: 'pico', img: picoWImg, firm: 'RPI_PICO_W-20251209-v1.27.0.uf2' },
+  { id: 'pico2', name: 'Pico 2', family: 'pico', img: pico2Img, firm: 'RPI_PICO2-20251209-v1.27.0.uf2' },
+  { id: 'pico2_w', name: 'Pico 2 W', family: 'pico', img: pico2WImg, firm: 'RPI_PICO2_W-20251209-v1.27.0.uf2' },  
+  { id: 'esp32', name: 'ESP32 (Generic)', family: 'esp32', img: espImg, firm: 'ESP32_GENERIC-20251209-v1.27.0.bin' },
 ]);
 
 // Reset state when modal opens
@@ -65,6 +69,7 @@ watch(() => props.isOpen, (isOpen) => {
     statusMessage.value = '';
     picoIdSuffix.value = 'xxxx';
     connectionMethod.value = 'wifi';
+    deviceFamily.value = 'pico'; // Default to Pico
     
     // If opening directly at Step 4 (e.g. from "Fix WiFi" flow), assume Wireless context
     if (props.initialStep === 4) {
@@ -78,7 +83,8 @@ watch(() => props.isOpen, (isOpen) => {
 const nextStep = async () => {
   let next = currentStep.value + 1;
   // In Electron, skip Step 2 (Drive Check) as it's auto-detected
-  if (isElectron && next === 2) {
+  // OR if ESP32, skip Step 2 entirely
+  if (next === 2 && (isElectron || deviceFamily.value === 'esp32')) {
     next = 3;
   }
 
@@ -102,7 +108,8 @@ const nextStep = async () => {
 const prevStep = () => {
   let prev = currentStep.value - 1;
   // In Electron, skip Step 2
-  if (isElectron && prev === 2) {
+  // OR if ESP32, skip Step 2 entirely
+  if (prev === 2 && (isElectron || deviceFamily.value === 'esp32')) {
     prev = 1;
   }
   
@@ -119,25 +126,38 @@ const startInstallation = async () => {
 
   try {
     // Determine if model is wireless
-    const isWireless = model.id === 'pico_w' || model.id === 'pico2_w';
-    currentModelInfo.value = { id: model.id, isWireless };
+    const isWireless = model.id === 'pico_w' || model.id === 'pico2_w' || model.id === 'esp32'; // Assuming ESP32 has wifi
+    currentModelInfo.value = { id: model.id, isWireless, family: (model as any).family };
     
-    await flashFirmware(model.firm, (status) => {
-       progress.value = status.progress;
-       statusMessage.value = t(status.status); 
-    }, {
-        getNextDriveHandle: async () => {
-            // Pause here and wait for user interaction
-            waitingForReSelect.value = true;
-            return new Promise((resolve) => {
-                reSelectResolve = resolve;
-            });
-        }
-    });
+    if (model.id === 'esp32') {
+      await flashEspFirmware(model.firm, (status) => {
+        progress.value = status.progress;
+        statusMessage.value = t(status.status);
+      });
+    } else {
+      await flashFirmware(model.firm, (status) => {
+         progress.value = status.progress;
+         statusMessage.value = t(status.status); 
+      }, {
+          getNextDriveHandle: async () => {
+              // Pause here and wait for user interaction
+              waitingForReSelect.value = true;
+              return new Promise((resolve) => {
+                  reSelectResolve = resolve;
+              });
+          }
+      });
+    }
 
-    // Flashing complete at 60%
-    isFlashing.value = false;
-    currentStep.value = 4;
+    // Flashing complete at 60% (Pico) or 100% (ESP)
+    if (model.id !== 'esp32') {
+      isFlashing.value = false;
+      currentStep.value = 4;
+    } else {
+      // For ESP, we go straight to library install or success
+      isFlashing.value = false;
+      currentStep.value = 4;
+    }
 
   } catch (err: any) {
     console.error(err);
@@ -281,10 +301,24 @@ const handleDismiss = async () => {
               <ion-badge color="tertiary">{{ t('setup.step1_title') }}</ion-badge>
             </ion-card-header>
             <ion-card-content class="step-content">
-              <div class="img-wrapper">
-                <img :src="step1Img" alt="BOOTSEL Button" />
+              <!-- Family Selection -->
+              <div class="family-selector ion-margin-bottom">
+                <ion-button 
+                  :fill="deviceFamily === 'pico' ? 'solid' : 'outline'" 
+                  size="small" 
+                  @click="deviceFamily = 'pico'"
+                >Pico</ion-button>
+                <ion-button 
+                  :fill="deviceFamily === 'esp32' ? 'solid' : 'outline'" 
+                  size="small" 
+                  @click="deviceFamily = 'esp32'"
+                >ESP32</ion-button>
               </div>
-              <p v-html="t('setup.step1_desc')"></p>
+
+              <div class="img-wrapper">
+                <img :src="deviceFamily === 'esp32' ? espImg : step1Img" alt="Device Preparation" />
+              </div>
+              <p v-html="deviceFamily === 'esp32' ? t('setup.esp_step1_desc') : t('setup.step1_desc')"></p>
             </ion-card-content>
           </ion-card>
         </div>
@@ -311,11 +345,11 @@ const handleDismiss = async () => {
               <ion-badge color="warning">{{ t('setup.step3_title') }}</ion-badge>
             </ion-card-header>
             <ion-card-content>
-              <p v-html="t('setup.step3_desc')"></p>
+              <p v-html="currentModelInfo?.family === 'esp32' ? t('setup.esp_step3_desc') : t('setup.step3_desc')"></p>
               
               <ion-grid class="model-grid">
                 <ion-row>
-                  <ion-col size="6" v-for="model in models" :key="model.id">
+                  <ion-col size="6" v-for="model in (deviceFamily ? models.filter(m => m.family === deviceFamily) : models)" :key="model.id">
                     <div 
                       class="model-item" 
                       :class="{ selected: selectedModel === model.id }"
@@ -615,6 +649,12 @@ const handleDismiss = async () => {
 .placeholder-btn {
   opacity: 0;
   pointer-events: none;
+}
+
+.family-selector {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
 }
 
 /* Install View Styles */

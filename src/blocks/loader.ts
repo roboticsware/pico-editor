@@ -34,9 +34,11 @@ export async function loadModeBlocks(modeId: string | null) {
         const { neosocoModule } = await import(`./${modeId}/neosoco/index.ts`);
         modules.push(neosocoModule);
         break
-      case 'rauf':
+      case 'esp32s3':
         const { ledModule } = await import(`./${modeId}/led/index.ts`);
+        const { visionModule } = await import(`./${modeId}/vision/index.ts`);
         modules.push(ledModule);
+        modules.push(visionModule);
         break;
       case 'rpipico':
         const { picoLedModule } = await import(`./${modeId}/pico_led/index.ts`);

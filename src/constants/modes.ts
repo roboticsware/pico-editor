@@ -1,12 +1,12 @@
 // Import images
-import socopicolabIcon from '@/assets/modes/socopicolab-icon.png';
-import socopicolabImg from '@/assets/modes/socopicolab.png';
+import socopicoIcon from '@/assets/modes/socopico-icon.png';
+import socopicoImg from '@/assets/modes/socopico.png';
 import esp32s3Icon from '@/assets/modes/esp32s3-icon.png';
 import esp32s3Img from '@/assets/modes/esp32s3.png';
 import rpipicoIcon from '@/assets/modes/rpipico-icon.png';
 import rpipicoImg from '@/assets/modes/rpipico.png';
 
-export type CodingMode = 'socopicolab' | 'esp32s3' | 'rpipico';
+export type CodingMode = 'socopico' | 'esp32s3' | 'rpipico';
 
 export interface ModeDetail {
   id: CodingMode;

@@ -20,11 +20,13 @@ export default function define(Blocks: any) {
     }
   };
 
-  // picozero 임포트 블록
+  // picozero 임포트 블록 (ESP32 환경에서는 espzero 사용)
   Blocks['import_picozero'] = {
     init: function () {
       this.appendDummyInput()
-        .appendField("from picozero import pico_led");
+        .appendField("import espzero; espzero.begin()");
+      this.appendDummyInput()
+        .appendField("from espzero import esp_led");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(maincolour);

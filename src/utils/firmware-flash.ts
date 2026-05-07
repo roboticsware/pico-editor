@@ -355,10 +355,13 @@ except:
             let fileNameToFetch = lib.fileName;
 
             if (lib.id === 'boot') {
-              if (connectionType === 'ble') {
+              const family = modelInfo.family || (modelInfo.id.startsWith('esp32') ? 'esp32' : 'pico');
+              if (family === 'esp32') {
+                fileNameToFetch = 'boot_esp32_wifi.py'; // ESP32 WiFi AP + WebREPL
+              } else if (connectionType === 'ble') {
                 fileNameToFetch = 'boot_ble.py';
               } else {
-                fileNameToFetch = 'boot_wifi.py'; // WiFi (Default)
+                fileNameToFetch = 'boot_wifi.py'; // Pico WiFi (Default)
               }
             }
 

@@ -39,7 +39,8 @@
       "title": "모드 변경 주의",
       "message": "모드를 변경하면 작성 중인 블록이 사라질 수 있습니다. 계속할까요?",
       "install_firmware": "새 사용자를 위한 펌웨어 설치",
-      "wireless_setup": "기본 라이브러리 설치와 무선 설정"
+      "wireless_setup": "기본 라이브러리 설치와 무선 설정",
+      "wireless_setup_desc": "이미 MicroPython 펌웨어가 설치된 기기에 라이브러리를 설치하거나 무선 설정을 초기화합니다. 아래에서 기기 종류를 선택해주세요."
     },
     "serial_detected": "현재 피코 유선연결이 존재합니다. 연결하시겠습니까? 만약, 무선연결을 시도하시려면 '아니오'를 선택하세요.",
     "wifi_detected_title": "Pico 연결 감지됨!",
@@ -93,7 +94,7 @@
     "dev_mode": "개발 모드에서는 업데이트 확인을 할 수 없습니다."
   },
   "setup": {
-    "title": "새로운 Pico 시작하기",
+    "title": "새 하드웨어와 시작하기",
     "step1_title": "1단계: 연결 준비",
     "step1_desc": "<strong>BOOTSEL 버튼</strong>을 누른 상태에서 USB 케이블을 컴퓨터에 연결하세요.<br/><br/><strong>그러나, 구입 후 첫 연결이면 본 과정은 건너뛰어도 됩니다.</strong>",
     "esp_step1_desc": "USB 케이블로 ESP32 장치를 연결하세요. <br/><br/><strong>참고:</strong> 일부 보드는 연결할 때나 'Connecting...' 메시지가 뜰 때 <strong>BOOT</strong> 버튼을 누르고 있어야 할 수도 있습니다.",

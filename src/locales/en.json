@@ -39,7 +39,8 @@
       "title": "Mode Change Warning",
       "message": "Changing the mode may cause current blocks to be lost. Do you want to continue?",
       "install_firmware": "New User? Firmware Installation",
-      "wireless_setup": "Basic Library Install & Wireless Setup"
+      "wireless_setup": "Basic Library Install & Wireless Setup",
+      "wireless_setup_desc": "Installs libraries or resets wireless settings on a device that already has MicroPython firmware. Please select your device type below."
     },
     "serial_detected": "Currently, there is a serial connection to the Pico. Do you want to connect? If you want to try wireless connection, please select 'No'.",
     "wifi_detected_title": "Pico Connection Detected!",
@@ -93,7 +94,7 @@
     "dev_mode": "Update check is not available in development mode."
   },
   "setup": {
-    "title": "Get Started with Pico",
+    "title": "Get Started with New Hardware",
     "step1_title": "Step 1: Preparation",
     "step1_desc": "Connect USB cable while holding the <strong>BOOTSEL button</strong>.<br/><br/><strong>However, if this is your first time connecting since purchase, you can skip this step.</strong>",
     "esp_step1_desc": "Plug in your ESP32 device via USB. <br/><br/><strong>Note:</strong> Some boards may require holding the <strong>BOOT</strong> button while connecting or when it says 'Connecting...'.",

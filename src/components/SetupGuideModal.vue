@@ -28,9 +28,11 @@ import espImg from '@/assets/esp32.thumb.png';
 
 const props = withDefaults(defineProps<{ 
   isOpen: boolean,
-  initialStep?: number 
+  initialStep?: number,
+  initialFamily?: 'pico' | 'esp32'
 }>(), {
-  initialStep: 1
+  initialStep: 1,
+  initialFamily: 'pico'
 });
 const emit = defineEmits(['close', 'install-complete']);
 const deviceStore = useDeviceStore();
@@ -71,11 +73,17 @@ watch(() => props.isOpen, (isOpen) => {
     connectionMethod.value = 'wifi';
     deviceFamily.value = 'pico'; // Default to Pico
     
-    // If opening directly at Step 4 (e.g. from "Fix WiFi" flow), assume Wireless context
+    // If opening directly at Step 4, initialize model info based on selected family
     if (props.initialStep === 4) {
-         currentModelInfo.value = { id: 'pico_w', isWireless: true };
+      if (props.initialFamily === 'esp32') {
+        deviceFamily.value = 'esp32';
+        currentModelInfo.value = { id: 'esp32', isWireless: true, family: 'esp32' };
+      } else {
+        deviceFamily.value = 'pico';
+        currentModelInfo.value = { id: 'pico_w', isWireless: true, family: 'pico' };
+      }
     } else {
-         currentModelInfo.value = null;
+      currentModelInfo.value = null;
     }
   }
 });
@@ -405,8 +413,8 @@ const handleDismiss = async () => {
                 <img :src="step4Img" alt="Select Port" />
               </div>
               
-              <!-- Connection Method Selection -->
-              <div class="connection-select ion-margin-top" v-if="currentModelInfo?.isWireless">
+              <!-- Connection Method Selection: Only for Pico W (not ESP32 which is WiFi-only) -->
+              <div class="connection-select ion-margin-top" v-if="currentModelInfo?.isWireless && currentModelInfo?.family !== 'esp32'">
                 <ion-text color="dark">
                   <p><strong>{{ t('setup.select_connection') }}</strong></p>
                 </ion-text>

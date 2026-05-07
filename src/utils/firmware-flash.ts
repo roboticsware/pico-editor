@@ -267,6 +267,15 @@ except:
       // Loop is 0-indexed for calculation
       const currentStepStart = progressStart + (index * step);
 
+      // Skip libraries not meant for this device family
+      if (lib.targetFamily && lib.targetFamily !== 'all') {
+        const family = modelInfo.family || (modelInfo.id.startsWith('esp32') ? 'esp32' : 'pico');
+        if (lib.targetFamily !== family) {
+          index++;
+          continue;
+        }
+      }
+
       // Skip boot if not wireless
       if (lib.id === 'boot' && !modelInfo.isWireless) {
         index++;
@@ -298,44 +307,90 @@ except:
         console.log(`Updating ${lib.name}: ${currentManifest[lib.id] || 'None'} -> ${lib.version}`);
 
         try {
-          let fileNameToFetch = lib.fileName;
-
-          if (lib.id === 'boot') {
-            if (connectionType === 'ble') {
-              fileNameToFetch = 'boot_ble.py';
-            } else {
-              fileNameToFetch = 'boot_wifi.py'; // WiFi (Default)
-            }
-          }
-
-          const res = await fetch(`/assets/libs/${fileNameToFetch}`);
-          if (!res.ok) throw new Error(`Failed to fetch ${fileNameToFetch}`);
-          const code = await res.text();
-
-          let targetPath = `/lib/${lib.fileName}`;
-          if (lib.id === 'boot') targetPath = 'boot.py';
-
-          if (targetPath.startsWith('/lib/')) {
-            try {
-              await serial.executeCommand(`
+          if (lib.isPackage && lib.packageFiles) {
+            // Handle Multi-file Package
+            await serial.executeCommand(`
 try:
-    os.remove('${lib.fileName}')
+    os.mkdir('/lib/${lib.fileName}')
 except:
     pass
 `);
-            } catch (e) { /* ignore */ }
-          }
+            
+            for (let i = 0; i < lib.packageFiles.length; i++) {
+              const pFile = lib.packageFiles[i];
+              const fileNameToFetch = `${lib.fileName}/${pFile}`;
+              const targetPath = `/lib/${lib.fileName}/${pFile}`;
+              
+              if (pFile.includes('/')) {
+                const parts = pFile.split('/');
+                let currentPath = `/lib/${lib.fileName}`;
+                for (let j = 0; j < parts.length - 1; j++) {
+                  currentPath += '/' + parts[j];
+                  await serial.executeCommand(`
+try:
+    os.mkdir('${currentPath}')
+except:
+    pass
+`);
+                }
+              }
 
-          await serial.uploadFile(targetPath, code, (filePct) => {
-            const globalPct = currentStepStart + ((filePct / 100) * step);
-            onProgress({ progress: globalPct, status: 'setup.library_installing' });
-          }, false);
+              const res = await fetch(`/assets/libs/${fileNameToFetch}`);
+              if (!res.ok) throw new Error(`Failed to fetch ${fileNameToFetch}`);
+              const code = await res.text();
 
-          if (lib.id === 'boot') {
-            // Append variant to version string for tracking
-            currentManifest[lib.id] = `${lib.version}+${connectionType}`;
-          } else {
+              const fileStep = step / lib.packageFiles.length;
+              const subStepStart = currentStepStart + (i * fileStep);
+
+              await serial.uploadFile(targetPath, code, (filePct) => {
+                const globalPct = subStepStart + ((filePct / 100) * fileStep);
+                onProgress({ progress: globalPct, status: 'setup.library_installing' });
+              }, false);
+            }
+            
             currentManifest[lib.id] = lib.version;
+
+          } else {
+            // Handle Single File Library (Original Logic)
+            let fileNameToFetch = lib.fileName;
+
+            if (lib.id === 'boot') {
+              if (connectionType === 'ble') {
+                fileNameToFetch = 'boot_ble.py';
+              } else {
+                fileNameToFetch = 'boot_wifi.py'; // WiFi (Default)
+              }
+            }
+
+            const res = await fetch(`/assets/libs/${fileNameToFetch}`);
+            if (!res.ok) throw new Error(`Failed to fetch ${fileNameToFetch}`);
+            const code = await res.text();
+
+            let targetPath = `/lib/${lib.fileName}`;
+            if (lib.id === 'boot') targetPath = 'boot.py';
+
+            if (targetPath.startsWith('/lib/')) {
+              try {
+                await serial.executeCommand(`
+try:
+    os.remove('${targetPath}')
+except:
+    pass
+`);
+              } catch (e) { /* ignore */ }
+            }
+
+            await serial.uploadFile(targetPath, code, (filePct) => {
+              const globalPct = currentStepStart + ((filePct / 100) * step);
+              onProgress({ progress: globalPct, status: 'setup.library_installing' });
+            }, false);
+
+            if (lib.id === 'boot') {
+              // Append variant to version string for tracking
+              currentManifest[lib.id] = `${lib.version}+${connectionType}`;
+            } else {
+              currentManifest[lib.id] = lib.version;
+            }
           }
 
         } catch (fetchErr) {

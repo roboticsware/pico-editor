@@ -1,7 +1,7 @@
 export default function defineGenerators(pythonGenerator: any) {
   pythonGenerator.forBlock['vision_start_pc_stream'] = function(block: any) {
-    pythonGenerator.definitions_['import_espzero_vision'] = 'import espzero_vision';
-    return 'espzero_vision.start_stream_to_pc()\n';
+    pythonGenerator.definitions_['import_espzero_vision'] = 'from espzero import vision';
+    return 'vision.start_stream_to_pc()\n';
   };
 
   pythonGenerator.forBlock['vision_get_pc_hand_x'] = function(block: any) {

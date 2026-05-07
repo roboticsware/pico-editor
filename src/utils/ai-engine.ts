@@ -48,7 +48,9 @@ export class AIEngine {
 
   private sendDataToESP32(results: HandLandmarkerResult) {
     // We only take the first hand, index finger tip (landmark 8) for a simple example
-    const indexTip = results.landmarks[0][8];
+    const hand = results.landmarks[0];
+    if (!hand) return;
+    const indexTip = hand[8];
     if (!indexTip) return;
 
     // Convert normalized coordinates (0.0 - 1.0) to something more useful (0-100)
@@ -60,7 +62,7 @@ export class AIEngine {
     const payload = `__pc_ai_data = {"hand_x": ${x}, "hand_y": ${y}}\r\n`;
 
     // Only send if connected
-    if (serial.isConnected()) {
+    if (serial.isConnected) {
       serial.write(payload);
     }
   }

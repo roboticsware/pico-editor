@@ -1,0 +1,31 @@
+# Ignore dependency directories
+node_modules/
+**/node_modules/
+
+# Ignore built artifacts
+dist/
+dist-ssr/
+build/
+out/
+
+# Ignore mobile and desktop app folders (not needed for web hosting)
+android/
+electron/
+
+# Ignore documentation and logs
+docs/
+*.log
+yarn-error.log
+
+# Ignore IDE and system files
+.git/
+.idx/
+.vscode/
+.idea/
+.DS_Store
+
+# Ignore lockfiles if you want, but package-lock.json can be kept for deterministic builds on Vercel
+# Let's keep package-lock.json/yarn.lock so Vercel can build with correct versions,
+# but ignore lock files of other subdirectories if any.
+**/electron/node_modules/
+**/android/.gradle/

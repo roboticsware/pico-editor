@@ -6,6 +6,7 @@ export interface FlashProgress {
 interface ModelInfo {
   id: string;
   isWireless: boolean; // pico_w or pico2_w
+  family?: 'pico' | 'esp32';
 }
 
 export async function flashFirmware(
@@ -316,8 +317,9 @@ except:
     pass
 `);
             
-            for (let i = 0; i < lib.packageFiles.length; i++) {
-              const pFile = lib.packageFiles[i];
+            const files = lib.packageFiles;
+            for (let i = 0; i < files.length; i++) {
+              const pFile = files[i]!;
               const fileNameToFetch = `${lib.fileName}/${pFile}`;
               const targetPath = `/lib/${lib.fileName}/${pFile}`;
               
@@ -339,7 +341,7 @@ except:
               if (!res.ok) throw new Error(`Failed to fetch ${fileNameToFetch}`);
               const code = await res.text();
 
-              const fileStep = step / lib.packageFiles.length;
+              const fileStep = step / files.length;
               const subStepStart = currentStepStart + (i * fileStep);
 
               await serial.uploadFile(targetPath, code, (filePct) => {

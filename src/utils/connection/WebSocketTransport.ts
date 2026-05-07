@@ -146,7 +146,7 @@ export class WebSocketTransport implements Transport {
     private emitFrame(jpegBytes: Uint8Array) {
         let binary = '';
         for (let i = 0; i < jpegBytes.length; i++) {
-            binary += String.fromCharCode(jpegBytes[i]);
+            binary += String.fromCharCode(jpegBytes[i]!);
         }
         const base64Str = window.btoa(binary);
         const event = new CustomEvent('serial-video-frame', { detail: base64Str });

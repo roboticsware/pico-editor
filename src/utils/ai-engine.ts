@@ -2,16 +2,17 @@ import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import type { HandLandmarkerResult } from '@mediapipe/tasks-vision';
 import { serial } from './serial';
 
+export type TrackDirection = 'LEFT' | 'CENTER' | 'RIGHT' | 'NONE';
+
 export class AIEngine {
   private handLandmarker: HandLandmarker | null = null;
   private isInitialized = false;
+  private trackMode = false;
 
   async init() {
     if (this.isInitialized) return;
 
     try {
-      // For full offline support, these URLs should point to local public/assets paths.
-      // Using CDNs here for quick testing, but architecture supports local.
       const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
       );
@@ -32,36 +33,92 @@ export class AIEngine {
     }
   }
 
-  processFrame(imageElement: HTMLImageElement | HTMLCanvasElement): HandLandmarkerResult | null {
+  setTrackMode(enabled: boolean) {
+    this.trackMode = enabled;
+  }
+
+  processFrame(canvas: HTMLCanvasElement): HandLandmarkerResult | null {
+    if (this.trackMode) {
+      this.analyzeTrack(canvas);
+      return null;
+    }
+
     if (!this.handLandmarker || !this.isInitialized) return null;
     
-    // Run inference
-    const results = this.handLandmarker.detect(imageElement);
+    const results = this.handLandmarker.detect(canvas);
     
-    // If hands are detected, send data back to ESP32
     if (results && results.landmarks && results.landmarks.length > 0) {
-      this.sendDataToESP32(results);
+      this.sendHandDataToESP32(results);
     }
 
     return results;
   }
 
-  private sendDataToESP32(results: HandLandmarkerResult) {
-    // We only take the first hand, index finger tip (landmark 8) for a simple example
+  // ── Vision-based line tracker ──────────────────────────────────
+  // Analyzes the bottom third of the frame, splits into 3 horizontal regions,
+  // counts dark pixels per region, and determines track direction.
+  analyzeTrack(canvas: HTMLCanvasElement): TrackDirection {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return 'NONE';
+
+    const { width, height } = canvas;
+    // Analyze bottom 40% of the frame where the track line is visible
+    const roiY = Math.floor(height * 0.6);
+    const roiH = height - roiY;
+    const imageData = ctx.getImageData(0, roiY, width, roiH);
+    const data = imageData.data;
+
+    const third = Math.floor(width / 3);
+    let leftDark = 0, centerDark = 0, rightDark = 0;
+    const darkThreshold = 80; // pixel brightness threshold (0-255)
+
+    for (let y = 0; y < roiH; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = data[idx] ?? 0;
+        const g = data[idx + 1] ?? 0;
+        const b = data[idx + 2] ?? 0;
+        const brightness = (r + g + b) / 3;
+        if (brightness < darkThreshold) {
+          if (x < third) leftDark++;
+          else if (x < third * 2) centerDark++;
+          else rightDark++;
+        }
+      }
+    }
+
+    const total = leftDark + centerDark + rightDark;
+    let direction: TrackDirection = 'NONE';
+    if (total > (third * roiH * 0.03)) { // at least 3% dark pixels = line found
+      const max = Math.max(leftDark, centerDark, rightDark);
+      if (max === centerDark) direction = 'CENTER';
+      else if (max === leftDark) direction = 'LEFT';
+      else direction = 'RIGHT';
+    }
+
+    // Broadcast via custom event for UI overlay display
+    window.dispatchEvent(new CustomEvent('pc-track-direction', { detail: { direction, leftDark, centerDark, rightDark } }));
+
+    // Inject into ESP32 REPL
+    if (serial.isConnected) {
+      const dirNum = { NONE: -1, LEFT: 0, CENTER: 1, RIGHT: 2 }[direction];
+      const payload = `__pc_track_data = {"direction": "${direction}", "dir_id": ${dirNum}, "l": ${leftDark}, "c": ${centerDark}, "r": ${rightDark}}\r\n`;
+      serial.write(payload);
+    }
+
+    return direction;
+  }
+
+  private sendHandDataToESP32(results: HandLandmarkerResult) {
     const hand = results.landmarks[0];
     if (!hand) return;
     const indexTip = hand[8];
     if (!indexTip) return;
 
-    // Convert normalized coordinates (0.0 - 1.0) to something more useful (0-100)
     const x = Math.round(indexTip.x * 100);
     const y = Math.round(indexTip.y * 100);
-
-    // Create a JSON string to inject into the Python REPL.
-    // The ESP32 Python code will just read a global variable `__pc_ai_data`
     const payload = `__pc_ai_data = {"hand_x": ${x}, "hand_y": ${y}}\r\n`;
 
-    // Only send if connected
     if (serial.isConnected) {
       serial.write(payload);
     }

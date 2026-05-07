@@ -64,6 +64,7 @@
     "codemirror": "^6.0.2",
     "esptool-js": "^0.6.0",
     "ionicons": "^8.0.13",
+    "jszip": "^3.10.1",
     "lucide-vue-next": "^0.562.0",
     "pinia": "^3.0.4",
     "splitpanes": "^4.0.4",
@@ -87,5 +88,8 @@
     "vite-plugin-pwa": "^1.2.0",
     "vite-plugin-vue-devtools": "^8.0.5",
     "vue-tsc": "^3.2.1"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.60.3"
   }
 }

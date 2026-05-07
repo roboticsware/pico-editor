@@ -20,6 +20,30 @@
       "type": "vision_get_pc_hand_y"
     },
     {
+      "kind": "block",
+      "type": "vision_is_hand_in_zone"
+    },
+    {
+      "kind": "label",
+      "text": "PC Vision (Line Tracker)"
+    },
+    {
+      "kind": "block",
+      "type": "vision_track_start"
+    },
+    {
+      "kind": "block",
+      "type": "vision_track_direction"
+    },
+    {
+      "kind": "block",
+      "type": "vision_track_direction_is"
+    },
+    {
+      "kind": "block",
+      "type": "vision_track_raw_count"
+    },
+    {
       "kind": "label",
       "text": "Device Vision (TFLite)"
     },
@@ -44,6 +68,42 @@
     {
       "kind": "block",
       "type": "vision_get_inference_result"
+    },
+    {
+      "kind": "block",
+      "type": "vision_is_detected_class_equal",
+      "inputs": {
+        "CLASS_ID": {
+          "shadow": {
+            "type": "math_number",
+            "fields": {
+              "NUM": 0
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "block",
+      "type": "vision_get_class_name_by_index",
+      "inputs": {
+        "CLASS_ID": {
+          "shadow": {
+            "type": "math_number",
+            "fields": {
+              "NUM": 0
+            }
+          }
+        },
+        "LABELS": {
+          "shadow": {
+            "type": "text",
+            "fields": {
+              "TEXT": "가위, 바위, 보"
+            }
+          }
+        }
+      }
     }
   ]
 }
